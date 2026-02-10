@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARES - Cálculo de Dispersão e PMI</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .ares-green { background-color: #2d5016; }
+        .ares-green-light { background-color: #3a5a1e; }
+        .ares-green-hover:hover { background-color: #4a6b2e; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        const ARES_LOGO = "data:image/png;base64,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";
+
+        // Tipos de alvo pré-definidos
+        const TARGET_TYPES = {
+            'otan_230': { name: 'OTAN 2,3m x 2,3m', width: 230, height: 230 },
+            'otan_side': { name: 'OTAN Side 4,6m x 2,3m', width: 460, height: 230 },
+            'a1_vert': { name: 'Folha A1 (Vertical)', width: 59.4, height: 84.1 },
+            'a1_horiz': { name: 'Folha A1 (Horizontal)', width: 84.1, height: 59.4 },
+            'custom': { name: 'Customizado', width: 230, height: 230 }
+        };
+
+        // Componente de simulação - SEMPRE usa OTAN 2,3x2,3m
+        function DistanceSimulation({ distance, shots, results, currentDistance }) {
+            const canvasRef = useRef(null);
+
+            // Calcular missedShots fora do useEffect para usar no JSX
+            const simulatedShots = shots.map(shot => {
+                const angleXRad = Math.atan((shot.x / 100) / currentDistance);
+                const angleYRad = Math.atan((shot.y / 100) / currentDistance);
+                const newX = Math.tan(angleXRad) * distance * 100;
+                const newY = Math.tan(angleYRad) * distance * 100;
+                return { x: newX, y: newY };
+            });
+
+            const missedShots = simulatedShots.filter(shot => 
+                Math.abs(shot.x) > 115 || Math.abs(shot.y) > 115
+            ).length;
+
+            useEffect(() => {
+                if (!canvasRef.current || !results) return;
+
+                const canvas = canvasRef.current;
+                const ctx = canvas.getContext('2d');
+                const width = canvas.width;
+                const height = canvas.height;
+                const centerX = width / 2;
+                const centerY = height / 2;
+
+                const scale = width / 230; // OTAN padrão
+
+                ctx.fillStyle = '#d0d0d0';
+                ctx.fillRect(0, 0, width, height);
+
+                // Desenhar alvo NATO
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(centerX, 0, width/2, height/2);
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(0, 0, width/2, height/2);
+                ctx.fillStyle = '#FFFFFF';
+                ctx.fillRect(0, centerY, width/2, height/2);
+                ctx.fillStyle = '#000000';
+                ctx.fillRect(centerX, centerY, width/2, height/2);
+
+                ctx.strokeStyle = '#FF0000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(centerX, 0);
+                ctx.lineTo(centerX, height);
+                ctx.moveTo(0, centerY);
+                ctx.lineTo(width, centerY);
+                ctx.stroke();
+
+                simulatedShots.forEach(shot => {
+                    const x = centerX + shot.x * scale;
+                    const y = centerY - shot.y * scale;
+                    const isInside = Math.abs(shot.x) <= 115 && Math.abs(shot.y) <= 115;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                    ctx.fillStyle = isInside ? '#e74c3c' : '#FF6B6B';
+                    ctx.fill();
+                    ctx.strokeStyle = isInside ? '#c0392b' : '#FF0000';
+                    ctx.lineWidth = isInside ? 1.5 : 2;
+                    ctx.stroke();
+                    
+                    if (!isInside) {
+                        ctx.strokeStyle = '#FF0000';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(x - 6, y - 6);
+                        ctx.lineTo(x + 6, y + 6);
+                        ctx.moveTo(x + 6, y - 6);
+                        ctx.lineTo(x - 6, y + 6);
+                        ctx.stroke();
+                    }
+                });
+
+                const meanAngleXRad = Math.atan((results.meanX / 100) / currentDistance);
+                const meanAngleYRad = Math.atan((results.meanY / 100) / currentDistance);
+                const simMeanX = Math.tan(meanAngleXRad) * distance * 100;
+                const simMeanY = Math.tan(meanAngleYRad) * distance * 100;
+                
+                const meanPixelX = centerX + simMeanX * scale;
+                const meanPixelY = centerY - simMeanY * scale;
+                
+                ctx.beginPath();
+                ctx.arc(meanPixelX, meanPixelY, 6, 0, 2 * Math.PI);
+                ctx.fillStyle = '#3498db';
+                ctx.fill();
+                ctx.strokeStyle = '#2980b9';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+            }, [distance, shots, results, currentDistance, simulatedShots]);
+
+            return (
+                <div className="bg-gray-50 p-4 rounded-xl border-2 border-gray-200">
+                    <div className="text-center mb-2">
+                        <span className="text-lg font-bold" style={{color: '#2d5016'}}>{distance}m</span>
+                    </div>
+                    <canvas 
+                        ref={canvasRef} 
+                        width={280} 
+                        height={280} 
+                        className="bg-white rounded-lg shadow-md mx-auto"
+                        style={{maxWidth: '280px', width: '280px', height: '280px'}}
+                    />
+                    <div className="text-center mt-2">
+                        <p className="text-xs text-gray-500">OTAN 2,3m x 2,3m</p>
+                        <p className={`text-sm font-semibold ${missedShots > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {missedShots > 0 ? `${missedShots} disparo${missedShots > 1 ? 's' : ''} fora` : 'Todos dentro'}
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+
+        // Componente principal
+        function App() {
+            const [distance, setDistance] = useState(100);
+            const [shots, setShots] = useState([]);
+            const [currentX, setCurrentX] = useState('');
+            const [currentY, setCurrentY] = useState('');
+            const canvasRef = useRef(null);
+            
+            // Tipo de alvo
+            const [targetType, setTargetType] = useState('otan_230');
+            const [customWidth, setCustomWidth] = useState(230);
+            const [customHeight, setCustomHeight] = useState(230);
+            
+            const [uploadedImage, setUploadedImage] = useState(null);
+            const [calibrationMode, setCalibrationMode] = useState(false);
+            const [calibrationStep, setCalibrationStep] = useState(0);
+            const [calibrationPoints, setCalibrationPoints] = useState({
+                center: null,
+                top: null,
+                bottom: null,
+                left: null,
+                right: null
+            });
+            const [isCalibrated, setIsCalibrated] = useState(false);
+            const [clickMode, setClickMode] = useState(false);
+            const [deleteMode, setDeleteMode] = useState(false);
+            const imageCanvasRef = useRef(null);
+
+            // Obter dimensões do alvo atual - MEMOIZADO para evitar loops
+            const targetDims = useMemo(() => {
+                if (targetType === 'custom') {
+                    return { width: customWidth, height: customHeight };
+                }
+                return TARGET_TYPES[targetType];
+            }, [targetType, customWidth, customHeight]);
+
+            const halfWidth = targetDims.width / 2;
+            const halfHeight = targetDims.height / 2;
+
+            const calibrationSteps = [
+                { key: 'center', label: 'Centro do alvo (0, 0)' },
+                { key: 'top', label: `Topo do alvo (Y = +${halfHeight.toFixed(1)} cm)` },
+                { key: 'bottom', label: `Base do alvo (Y = -${halfHeight.toFixed(1)} cm)` },
+                { key: 'left', label: `Esquerda do alvo (X = -${halfWidth.toFixed(1)} cm)` },
+                { key: 'right', label: `Direita do alvo (X = +${halfWidth.toFixed(1)} cm)` }
+            ];
+
+            // Calcular matriz de homografia (perspectiva)
+            const calculateHomography = () => {
+                if (!isCalibrated) return null;
+                
+                const { topLeft, topRight, bottomRight, bottomLeft } = calibrationPoints;
+                
+                // Pontos na imagem (origem)
+                const srcPoints = [
+                    [topLeft.x, topLeft.y],
+                    [topRight.x, topRight.y],
+                    [bottomRight.x, bottomRight.y],
+                    [bottomLeft.x, bottomLeft.y]
+                ];
+                
+                // Pontos no alvo real (destino) - em centímetros
+                const dstPoints = [
+                    [-halfWidth, halfHeight],   // top-left
+                    [halfWidth, halfHeight],    // top-right
+                    [halfWidth, -halfHeight],   // bottom-right
+                    [-halfWidth, -halfHeight]   // bottom-left
+                ];
+                
+                // Resolver sistema linear para encontrar matriz de homografia
+                // Simplified Direct Linear Transformation (DLT)
+                const A = [];
+                for (let i = 0; i < 4; i++) {
+                    const [x, y] = srcPoints[i];
+                    const [X, Y] = dstPoints[i];
+                    A.push([-x, -y, -1, 0, 0, 0, x*X, y*X, X]);
+                    A.push([0, 0, 0, -x, -y, -1, x*Y, y*Y, Y]);
+                }
+                
+                // Resolver Ah = 0 usando SVD simplificado
+                // Para simplificar, vou usar método direto
+                return { srcPoints, dstPoints };
+            };
+
+            const generatePDF = () => {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                const results = calculateResults();
+                
+                if (!results) {
+                    alert('Adicione disparos antes de gerar o PDF');
+                    return;
+                }
+
+                doc.setFillColor(45, 80, 22);
+                doc.rect(0, 0, 210, 35, 'F');
+                
+                doc.setTextColor(255, 255, 255);
+                doc.setFontSize(24);
+                doc.setFont(undefined, 'bold');
+                doc.text('ARES', 105, 15, { align: 'center' });
+                
+                doc.setFontSize(14);
+                doc.text('Cálculo de Dispersão e PMI', 105, 23, { align: 'center' });
+                
+                const date = new Date().toLocaleString('pt-BR');
+                doc.setFontSize(9);
+                doc.text(`Gerado em: ${date}`, 105, 30, { align: 'center' });
+                
+                doc.setTextColor(0, 0, 0);
+                let yPos = 45;
+                
+                doc.setFontSize(16);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(45, 80, 22);
+                doc.text('Parâmetros', 20, yPos);
+                yPos += 8;
+                
+                doc.setFontSize(11);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(0, 0, 0);
+                doc.text(`Tipo de Alvo: ${TARGET_TYPES[targetType]?.name || 'Customizado'}`, 25, yPos);
+                yPos += 6;
+                doc.text(`Dimensões: ${targetDims.width.toFixed(1)}cm x ${targetDims.height.toFixed(1)}cm`, 25, yPos);
+                yPos += 6;
+                doc.text(`Distância: ${distance} m`, 25, yPos);
+                yPos += 6;
+                doc.text(`Disparos: ${shots.length}`, 25, yPos);
+                yPos += 12;
+                
+                doc.setFontSize(16);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(45, 80, 22);
+                doc.text('Disparos', 20, yPos);
+                yPos += 8;
+                
+                doc.setFillColor(45, 80, 22);
+                doc.rect(20, yPos - 5, 170, 8, 'F');
+                
+                doc.setFontSize(10);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(255, 255, 255);
+                doc.text('#', 25, yPos);
+                doc.text('X(cm)', 45, yPos);
+                doc.text('Y(cm)', 70, yPos);
+                doc.text('X(mils)', 95, yPos);
+                doc.text('Y(mils)', 125, yPos);
+                yPos += 8;
+                
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(0, 0, 0);
+                shots.forEach((shot, index) => {
+                    const xMils = Math.atan((shot.x / 100) / distance) * 1000;
+                    const yMils = Math.atan((shot.y / 100) / distance) * 1000;
+                    
+                    if (yPos > 270) {
+                        doc.addPage();
+                        yPos = 20;
+                    }
+                    
+                    doc.text(`${index + 1}`, 25, yPos);
+                    doc.text(shot.x.toFixed(1), 45, yPos);
+                    doc.text(shot.y.toFixed(1), 70, yPos);
+                    doc.text(xMils.toFixed(2), 95, yPos);
+                    doc.text(yMils.toFixed(2), 125, yPos);
+                    yPos += 6;
+                });
+                
+                yPos += 8;
+                
+                doc.setFontSize(16);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(45, 80, 22);
+                doc.text('Resultados', 20, yPos);
+                yPos += 10;
+                
+                doc.setFontSize(13);
+                doc.text('Ponto Médio', 25, yPos);
+                yPos += 7;
+                
+                doc.setFontSize(11);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(0, 0, 0);
+                doc.text(`X: ${results.meanX.toFixed(2)} cm | ${results.meanXMils.toFixed(2)} mils`, 30, yPos);
+                yPos += 6;
+                doc.text(`Y: ${results.meanY.toFixed(2)} cm | ${results.meanYMils.toFixed(2)} mils`, 30, yPos);
+                yPos += 10;
+                
+                doc.setFontSize(13);
+                doc.setFont(undefined, 'bold');
+                doc.setTextColor(45, 80, 22);
+                doc.text('Desvio Padrão', 25, yPos);
+                yPos += 7;
+                
+                doc.setFontSize(11);
+                doc.setFont(undefined, 'normal');
+                doc.setTextColor(0, 0, 0);
+                doc.text(`Horizontal: ${results.stdDevXMils.toFixed(2)} mils`, 30, yPos);
+                yPos += 6;
+                doc.text(`Vertical: ${results.stdDevYMils.toFixed(2)} mils`, 30, yPos);
+                yPos += 6;
+                doc.text(`Radial: ${results.stdDevRadialMils.toFixed(2)} mils`, 30, yPos);
+                
+                if (canvasRef.current) {
+                    doc.addPage();
+                    doc.setFillColor(45, 80, 22);
+                    doc.rect(0, 0, 210, 35, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(18);
+                    doc.setFont(undefined, 'bold');
+                    doc.text('Visualização do Alvo', 105, 20, { align: 'center' });
+                    
+                    const imgData = canvasRef.current.toDataURL('image/png');
+                    doc.addImage(imgData, 'PNG', 15, 40, 180, 180);
+                }
+                
+                if (imageCanvasRef.current && uploadedImage) {
+                    doc.addPage();
+                    doc.setFillColor(45, 80, 22);
+                    doc.rect(0, 0, 210, 35, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(18);
+                    doc.setFont(undefined, 'bold');
+                    doc.text('Foto do Alvo', 105, 20, { align: 'center' });
+                    
+                    const photoData = imageCanvasRef.current.toDataURL('image/png');
+                    doc.addImage(photoData, 'PNG', 15, 40, 180, 180);
+                }
+                
+                const pageCount = doc.internal.getNumberOfPages();
+                for (let i = 1; i <= pageCount; i++) {
+                    doc.setPage(i);
+                    doc.setFillColor(45, 80, 22);
+                    doc.rect(0, 287, 210, 10, 'F');
+                    doc.setTextColor(255, 255, 255);
+                    doc.setFontSize(9);
+                    doc.text('ARES - Tecnologia Brasileira em Defesa', 105, 293, { align: 'center' });
+                }
+                
+                doc.save(`ARES_Calculo_Dispersao_PMI_${Date.now()}.pdf`);
+            };
+
+            const handleImageUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            setUploadedImage(img);
+                            setCalibrationMode(true);
+                            setCalibrationStep(0);
+                            setCalibrationPoints({
+                                center: null,
+                                top: null,
+                                bottom: null,
+                                left: null,
+                                right: null
+                            });
+                            setIsCalibrated(false);
+                            setClickMode(false);
+                        };
+                        img.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            };
+
+            const handleImageClick = (e) => {
+                if (!imageCanvasRef.current) return;
+                
+                const canvas = imageCanvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const x = (e.clientX - rect.left) * scaleX;
+                const y = (e.clientY - rect.top) * scaleY;
+
+                if (calibrationMode && calibrationStep < 5) {
+                    const currentKey = calibrationSteps[calibrationStep].key;
+                    setCalibrationPoints(prev => ({
+                        ...prev,
+                        [currentKey]: { x, y }
+                    }));
+                    
+                    if (calibrationStep === 4) {
+                        setCalibrationMode(false);
+                        setIsCalibrated(true);
+                        setClickMode(true);
+                    } else {
+                        setCalibrationStep(calibrationStep + 1);
+                    }
+                } else if (clickMode && isCalibrated) {
+                    if (deleteMode) {
+                        // Modo apagar - remover disparo mais próximo
+                        const { center, top, bottom, left, right } = calibrationPoints;
+                        const scaleYCoord = (bottom.y - top.y) / targetDims.height;
+                        const scaleXCoord = (right.x - left.x) / targetDims.width;
+
+                        let closestIndex = -1;
+                        let minDistance = Infinity;
+
+                        shots.forEach((shot, index) => {
+                            const pixelX = center.x + (shot.x * scaleXCoord);
+                            const pixelY = center.y - (shot.y * scaleYCoord);
+                            
+                            const distance = Math.sqrt(
+                                Math.pow(x - pixelX, 2) + Math.pow(y - pixelY, 2)
+                            );
+                            
+                            if (distance < minDistance && distance < 30) { // Raio de 30 pixels para touch
+                                minDistance = distance;
+                                closestIndex = index;
+                            }
+                        });
+
+                        if (closestIndex !== -1) {
+                            setShots(shots.filter((_, i) => i !== closestIndex));
+                            setDeleteMode(false); // Desativar modo apagar após deletar
+                        }
+                    } else {
+                        // Modo adicionar - adicionar novo disparo
+                        const coords = pixelToCoordinates(x, y);
+                        if (coords) {
+                            setShots([...shots, coords]);
+                        }
+                    }
+                }
+            };
+
+            const handleImageRightClick = (e) => {
+                e.preventDefault(); // Prevenir menu de contexto
+                
+                if (!imageCanvasRef.current || !isCalibrated || shots.length === 0) return;
+                
+                const canvas = imageCanvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const clickX = (e.clientX - rect.left) * scaleX;
+                const clickY = (e.clientY - rect.top) * scaleY;
+
+                // Encontrar o disparo mais próximo do clique
+                const { center, top, bottom, left, right } = calibrationPoints;
+                const scaleYCoord = (bottom.y - top.y) / targetDims.height;
+                const scaleXCoord = (right.x - left.x) / targetDims.width;
+
+                let closestIndex = -1;
+                let minDistance = Infinity;
+
+                shots.forEach((shot, index) => {
+                    const pixelX = center.x + (shot.x * scaleXCoord);
+                    const pixelY = center.y - (shot.y * scaleYCoord);
+                    
+                    const distance = Math.sqrt(
+                        Math.pow(clickX - pixelX, 2) + Math.pow(clickY - pixelY, 2)
+                    );
+                    
+                    if (distance < minDistance && distance < 20) { // Raio de 20 pixels
+                        minDistance = distance;
+                        closestIndex = index;
+                    }
+                });
+
+                if (closestIndex !== -1) {
+                    // Remover o disparo mais próximo
+                    setShots(shots.filter((_, i) => i !== closestIndex));
+                }
+            };
+
+            const pixelToCoordinates = (pixelX, pixelY) => {
+                if (!isCalibrated) return null;
+
+                const { center, top, bottom, left, right } = calibrationPoints;
+                const totalHeight = targetDims.height;
+                const totalWidth = targetDims.width;
+                
+                const scaleY = (bottom.y - top.y) / totalHeight;
+                const scaleX = (right.x - left.x) / totalWidth;
+                const deltaX = pixelX - center.x;
+                const deltaY = center.y - pixelY;
+                const x = deltaX / scaleX;
+                const y = deltaY / scaleY;
+
+                return { x, y };
+            };
+
+            const drawImageCanvas = () => {
+                try {
+                    console.log('drawImageCanvas called');
+                    if (!imageCanvasRef.current || !uploadedImage) {
+                        console.log('No canvas or image');
+                        return;
+                    }
+
+                    const canvas = imageCanvasRef.current;
+                    const ctx = canvas.getContext('2d');
+
+                    const maxWidth = Math.min(window.innerWidth - 40, 800);
+                    const maxHeight = Math.min(window.innerHeight * 0.6, 600);
+                    let width = uploadedImage.width;
+                    let height = uploadedImage.height;
+
+                    if (width > maxWidth || height > maxHeight) {
+                        const ratio = Math.min(maxWidth / width, maxHeight / height);
+                        width *= ratio;
+                        height *= ratio;
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    ctx.drawImage(uploadedImage, 0, 0, width, height);
+
+                    ctx.strokeStyle = '#00FF00';
+                    ctx.fillStyle = '#00FF00';
+                    ctx.lineWidth = 3;
+
+                    Object.entries(calibrationPoints).forEach(([key, point]) => {
+                        if (point) {
+                            // Apenas cruz (sem círculo)
+                            ctx.strokeStyle = '#00FF00';
+                            ctx.lineWidth = 3;
+                            ctx.beginPath();
+                            ctx.moveTo(point.x - 10, point.y);
+                            ctx.lineTo(point.x + 10, point.y);
+                            ctx.moveTo(point.x, point.y - 10);
+                            ctx.lineTo(point.x, point.y + 10);
+                            ctx.stroke();
+
+                            ctx.fillStyle = '#FFFFFF';
+                            ctx.strokeStyle = '#000000';
+                            ctx.lineWidth = 3;
+                            ctx.font = 'bold 12px Arial';
+                            const labels = {
+                                center: 'C',
+                                top: 'T',
+                                bottom: 'B',
+                                left: 'E',
+                                right: 'D'
+                            };
+                            const label = labels[key] || key.substring(0, 1).toUpperCase();
+                            ctx.strokeText(label, point.x + 15, point.y - 10);
+                            ctx.fillStyle = '#00FF00';
+                            ctx.fillText(label, point.x + 15, point.y - 10);
+                        }
+                    });
+
+                    console.log('Drawing shots:', shots.length);
+                    if (isCalibrated && shots.length > 0) {
+                        shots.forEach((shot, index) => {
+                            console.log(`Drawing shot ${index}:`, shot);
+                            const { center, top, bottom, left, right } = calibrationPoints;
+                            
+                            const scaleY = (bottom.y - top.y) / targetDims.height;
+                            const scaleX = (right.x - left.x) / targetDims.width;
+                            
+                            const pixelX = center.x + (shot.x * scaleX);
+                            const pixelY = center.y - (shot.y * scaleY);
+
+                            ctx.fillStyle = '#FF0000';
+                            ctx.strokeStyle = '#8B0000';
+                            ctx.lineWidth = 3;
+                            ctx.beginPath();
+                            ctx.arc(pixelX, pixelY, 8, 0, 2 * Math.PI);
+                            ctx.fill();
+                            ctx.stroke();
+                        });
+                    }
+                    console.log('drawImageCanvas completed');
+                } catch (error) {
+                    console.error('Error in drawImageCanvas:', error);
+                }
+            };
+
+            useEffect(() => {
+                console.log('useEffect triggered - uploadedImage:', !!uploadedImage, 'shots:', shots.length);
+                if (uploadedImage) {
+                    drawImageCanvas();
+                }
+            }, [uploadedImage, calibrationPoints, shots, isCalibrated, targetDims]);
+
+            const resetCalibration = () => {
+                setUploadedImage(null);
+                setCalibrationMode(false);
+                setCalibrationStep(0);
+                setCalibrationPoints({
+                    center: null,
+                    top: null,
+                    bottom: null,
+                    left: null,
+                    right: null
+                });
+                setIsCalibrated(false);
+                setClickMode(false);
+            };
+
+            const addShot = () => {
+                if (currentX !== '' && currentY !== '') {
+                    setShots([...shots, { x: parseFloat(currentX), y: parseFloat(currentY) }]);
+                    setCurrentX('');
+                    setCurrentY('');
+                }
+            };
+
+            const removeShot = (index) => {
+                setShots(shots.filter((_, i) => i !== index));
+            };
+
+            const clearAll = () => {
+                setShots([]);
+            };
+
+            const handleKeyPress = (e) => {
+                if (e.key === 'Enter') {
+                    addShot();
+                }
+            };
+
+            const calculateResults = () => {
+                if (shots.length === 0) return null;
+
+                const meanX = shots.reduce((sum, shot) => sum + shot.x, 0) / shots.length;
+                const meanY = shots.reduce((sum, shot) => sum + shot.y, 0) / shots.length;
+
+                const angleXRadians = Math.atan((meanX / 100) / distance);
+                const angleYRadians = Math.atan((meanY / 100) / distance);
+                
+                const meanXMils = angleXRadians * 1000;
+                const meanYMils = angleYRadians * 1000;
+
+                const n = shots.length;
+                const varianceX = shots.reduce((sum, shot) => sum + Math.pow(shot.x - meanX, 2), 0) / (n - 1);
+                const varianceY = shots.reduce((sum, shot) => sum + Math.pow(shot.y - meanY, 2), 0) / (n - 1);
+                const stdDevX = Math.sqrt(varianceX);
+                const stdDevY = Math.sqrt(varianceY);
+
+                const radialDistances = shots.map(shot => 
+                    Math.sqrt(Math.pow(shot.x - meanX, 2) + Math.pow(shot.y - meanY, 2))
+                );
+                const varianceRadial = radialDistances.reduce((sum, d) => sum + Math.pow(d - (radialDistances.reduce((s, v) => s + v, 0) / n), 2), 0) / (n - 1);
+                const stdDevRadial = Math.sqrt(varianceRadial);
+                
+                const stdDevXMils = Math.atan((stdDevX / 100) / distance) * 1000;
+                const stdDevYMils = Math.atan((stdDevY / 100) / distance) * 1000;
+                const stdDevRadialMils = Math.atan((stdDevRadial / 100) / distance) * 1000;
+
+                return {
+                    meanX,
+                    meanY,
+                    meanXMils,
+                    meanYMils,
+                    stdDevX,
+                    stdDevY,
+                    stdDevXMils,
+                    stdDevYMils,
+                    stdDevRadialMils
+                };
+            };
+
+            const results = calculateResults();
+
+            // Desenhar alvo principal
+            useEffect(() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+
+                const ctx = canvas.getContext('2d');
+                const width = canvas.width;
+                const height = canvas.height;
+                const centerX = width / 2;
+                const centerY = height / 2;
+                
+                // Escala baseada nas dimensões do alvo
+                const maxDim = Math.max(targetDims.width, targetDims.height);
+                const scale = (width * 0.9) / maxDim;
+
+                ctx.fillStyle = '#d0d0d0';
+                ctx.fillRect(0, 0, width, height);
+
+                const targetWidth = targetDims.width * scale;
+                const targetHeight = targetDims.height * scale;
+                const left = centerX - targetWidth / 2;
+                const top = centerY - targetHeight / 2;
+
+                // Desenhar padrão do alvo conforme tipo
+                if (targetType === 'a1_vert' || targetType === 'a1_horiz') {
+                    // Alvo A1 com dimensões específicas
+                    // Fundo branco
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(left, top, targetWidth, targetHeight);
+                    
+                    // Desenhar quadriculado fino de 10mm (1cm)
+                    const gridSizeFine = 1 * scale; // 10mm = 1cm
+                    ctx.strokeStyle = '#CCCCCC';
+                    ctx.lineWidth = 0.5;
+                    
+                    // Ajustar início para que o centro esteja em um vértice
+                    const startX = centerX % gridSizeFine;
+                    const startY = centerY % gridSizeFine;
+                    
+                    // Linhas verticais finas
+                    for (let x = startX; x < width; x += gridSizeFine) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, 0);
+                        ctx.lineTo(x, height);
+                        ctx.stroke();
+                    }
+                    
+                    // Linhas horizontais finas
+                    for (let y = startY; y < height; y += gridSizeFine) {
+                        ctx.beginPath();
+                        ctx.moveTo(0, y);
+                        ctx.lineTo(width, y);
+                        ctx.stroke();
+                    }
+                    
+                    // Desenhar quadriculado grosso de 100mm (10cm)
+                    const gridSizeThick = 10 * scale; // 100mm = 10cm
+                    ctx.strokeStyle = '#888888';
+                    ctx.lineWidth = 1.5;
+                    
+                    // Linhas verticais grossas (centro no vértice)
+                    for (let x = centerX; x < width; x += gridSizeThick) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, 0);
+                        ctx.lineTo(x, height);
+                        ctx.stroke();
+                    }
+                    for (let x = centerX - gridSizeThick; x >= 0; x -= gridSizeThick) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, 0);
+                        ctx.lineTo(x, height);
+                        ctx.stroke();
+                    }
+                    
+                    // Linhas horizontais grossas (centro no vértice)
+                    for (let y = centerY; y < height; y += gridSizeThick) {
+                        ctx.beginPath();
+                        ctx.moveTo(0, y);
+                        ctx.lineTo(width, y);
+                        ctx.stroke();
+                    }
+                    for (let y = centerY - gridSizeThick; y >= 0; y -= gridSizeThick) {
+                        ctx.beginPath();
+                        ctx.moveTo(0, y);
+                        ctx.lineTo(width, y);
+                        ctx.stroke();
+                    }
+                    
+                    // Quadrado de 230mm (23cm)
+                    const squareSize = 23 * scale;
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(centerX - squareSize/2, centerY - squareSize/2, 
+                                   squareSize, squareSize);
+                    
+                    // Círculo de 200mm (20cm) de diâmetro
+                    const outerRadius = 10 * scale; // raio = 100mm = 10cm
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, outerRadius, 0, 2 * Math.PI);
+                    ctx.stroke();
+                    
+                    // Círculo central preto de 60mm (6cm) de diâmetro
+                    const innerRadius = 3 * scale; // raio = 30mm = 3cm
+                    ctx.fillStyle = '#000000';
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, innerRadius, 0, 2 * Math.PI);
+                    ctx.fill();
+                } else {
+                    // Alvo NATO padrão (quadriculado)
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(centerX, top, targetWidth/2, targetHeight/2);
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(left, top, targetWidth/2, targetHeight/2);
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.fillRect(left, centerY, targetWidth/2, targetHeight/2);
+                    ctx.fillStyle = '#000000';
+                    ctx.fillRect(centerX, centerY, targetWidth/2, targetHeight/2);
+                }
+
+                // Eixos
+                ctx.strokeStyle = '#FF0000';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(centerX, top);
+                ctx.lineTo(centerX, top + targetHeight);
+                ctx.moveTo(left, centerY);
+                ctx.lineTo(left + targetWidth, centerY);
+                ctx.stroke();
+
+                // Desenhar disparos
+                shots.forEach(shot => {
+                    const x = centerX + shot.x * scale;
+                    const y = centerY - shot.y * scale;
+                    
+                    ctx.beginPath();
+                    ctx.arc(x, y, 6, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#e74c3c';
+                    ctx.fill();
+                    ctx.strokeStyle = '#c0392b';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                });
+
+                // Ponto médio
+                if (results) {
+                    const meanX = centerX + results.meanX * scale;
+                    const meanY = centerY - results.meanY * scale;
+                    
+                    ctx.beginPath();
+                    ctx.arc(meanX, meanY, 10, 0, 2 * Math.PI);
+                    ctx.fillStyle = '#3498db';
+                    ctx.fill();
+                    ctx.strokeStyle = '#2980b9';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                }
+
+            }, [shots, results, targetType, customWidth, customHeight]);
+
+            return (
+                <div className="min-h-screen" style={{background: 'linear-gradient(135deg, #1a3d0f 0%, #2d5016 50%, #1a3d0f 100%)'}}>
+                    <div className="max-w-7xl mx-auto p-4">
+                        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
+                            <div style={{background: 'linear-gradient(to right, #2d5016, #3a5a1e)'}} className="text-white p-8 text-center">
+                                <div className="flex items-center justify-center mb-4">
+                                    <img src={ARES_LOGO} alt="ARES Logo" className="h-12"/>
+                                </div>
+                                <h1 className="text-4xl font-bold">Cálculo de Dispersão e PMI</h1>
+                            </div>
+
+                            <div className="p-8">
+                                {/* Seção de Tipo de Alvo */}
+                                <div className="bg-gray-50 p-6 rounded-xl border-2 border-gray-200 mb-8">
+                                    <h2 className="text-2xl font-semibold mb-6 pb-3" style={{color: '#2d5016', borderBottom: '4px solid #3a5a1e'}}>
+                                        🎯 Configuração do Alvo
+                                    </h2>
+                                    
+                                    <div className="mb-6">
+                                        <label className="block mb-2 font-semibold text-gray-700 text-sm">
+                                            Tipo de Alvo
+                                        </label>
+                                        <select
+                                            value={targetType}
+                                            onChange={(e) => {
+                                                setTargetType(e.target.value);
+                                                // Reset calibração ao mudar tipo
+                                                setCalibrationMode(false);
+                                                setIsCalibrated(false);
+                                                setCalibrationPoints({
+                                                    center: null,
+                                                    top: null,
+                                                    bottom: null,
+                                                    left: null,
+                                                    right: null
+                                                });
+                                            }}
+                                            className="w-full p-3 border-2 border-gray-300 rounded-lg text-lg"
+                                            style={{color: '#2d5016', fontWeight: '600'}}
+                                        >
+                                            <option value="otan_230">OTAN 2,3m x 2,3m (230cm x 230cm)</option>
+                                            <option value="otan_side">OTAN Side 4,6m x 2,3m (460cm x 230cm)</option>
+                                            <option value="a1_vert">Folha A1 - Vertical (59,4cm x 84,1cm)</option>
+                                            <option value="a1_horiz">Folha A1 - Horizontal (84,1cm x 59,4cm)</option>
+                                            <option value="custom">Customizado</option>
+                                        </select>
+                                    </div>
+
+                                    {targetType === 'custom' && (
+                                        <div className="grid grid-cols-2 gap-4 mb-6">
+                                            <div>
+                                                <label className="block mb-2 font-semibold text-gray-700 text-sm">
+                                                    Largura (cm)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={customWidth}
+                                                    onChange={(e) => setCustomWidth(parseFloat(e.target.value) || 230)}
+                                                    className="w-full p-3 border-2 border-gray-300 rounded-lg"
+                                                    step="0.1"
+                                                    min="10"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block mb-2 font-semibold text-gray-700 text-sm">
+                                                    Altura (cm)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    value={customHeight}
+                                                    onChange={(e) => setCustomHeight(parseFloat(e.target.value) || 230)}
+                                                    className="w-full p-3 border-2 border-gray-300 rounded-lg"
+                                                    step="0.1"
+                                                    min="10"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                        <p className="text-sm text-blue-900">
+                                            <strong>Alvo selecionado:</strong> {targetDims.width.toFixed(1)}cm (largura) x {targetDims.height.toFixed(1)}cm (altura)
+                                        </p>
+                                        <p className="text-xs text-blue-700 mt-2">
+                                            Limites: X = ±{halfWidth.toFixed(1)}cm | Y = ±{halfHeight.toFixed(1)}cm
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Upload e Calibração */}
+                                <div className="bg-gray-50 p-6 rounded-xl border-2 border-gray-200 mb-8">
+                                    <h2 className="text-2xl font-semibold mb-6 pb-3" style={{color: '#2d5016', borderBottom: '4px solid #3a5a1e'}}>
+                                        📸 Registro por Foto do Alvo
+                                    </h2>
+                                    
+                                    <div className="mb-6">
+                                        <label className="block mb-2 font-semibold text-gray-700 text-sm">
+                                            Upload da foto do alvo
+                                        </label>
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleImageUpload}
+                                            className="w-full p-3 border-2 border-gray-300 rounded-lg"
+                                        />
+                                    </div>
+
+                                    {uploadedImage && (
+                                        <div>
+                                            {calibrationMode && (
+                                                <div className="mb-4 p-4 bg-yellow-100 border-2 border-yellow-400 rounded-lg">
+                                                    <h3 className="font-bold text-yellow-800 mb-2">
+                                                        🎯 Calibração - Passo {calibrationStep + 1} de 5
+                                                    </h3>
+                                                    <p className="text-yellow-900">
+                                                        Clique no ponto: <strong>{calibrationSteps[calibrationStep].label}</strong>
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {isCalibrated && clickMode && (
+                                                <div className="mb-4 p-4 bg-green-100 border-2 border-green-400 rounded-lg">
+                                                    <h3 className="font-bold text-green-800 mb-2">
+                                                        ✅ Calibração Concluída!
+                                                    </h3>
+                                                    {deleteMode ? (
+                                                        <p className="text-red-700 font-bold text-lg mb-2">
+                                                            🗑️ MODO APAGAR ATIVADO - Clique no disparo para remover
+                                                        </p>
+                                                    ) : (
+                                                        <p className="text-green-900 mb-2">
+                                                            <strong>Clique:</strong> Marcar impacto<br/>
+                                                            <strong>Clique direito (PC):</strong> Apagar impacto
+                                                        </p>
+                                                    )}
+                                                    <div className="flex gap-2 mt-3 flex-wrap">
+                                                        <button
+                                                            onClick={() => setClickMode(!clickMode)}
+                                                            className="px-4 py-2 rounded-lg font-semibold text-white"
+                                                            style={{background: clickMode ? '#f39c12' : '#3a5a1e'}}
+                                                        >
+                                                            {clickMode ? '⏸️ Pausar' : '▶️ Retomar'}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setDeleteMode(!deleteMode)}
+                                                            className={`px-4 py-2 rounded-lg font-semibold text-white ${deleteMode ? 'bg-red-600' : 'bg-orange-500'}`}
+                                                        >
+                                                            {deleteMode ? '❌ Cancelar Apagar' : '🗑️ Apagar Disparo'}
+                                                        </button>
+                                                        <button
+                                                            onClick={resetCalibration}
+                                                            className="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold"
+                                                        >
+                                                            🔄 Recalibrar
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <div className="flex justify-center">
+                                                <canvas
+                                                    ref={imageCanvasRef}
+                                                    onClick={handleImageClick}
+                                                    onContextMenu={handleImageRightClick}
+                                                    className="border-4 rounded-lg shadow-lg max-w-full"
+                                                    style={{
+                                                        borderColor: '#3a5a1e',
+                                                        cursor: deleteMode ? 'not-allowed' : 'crosshair'
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="grid md:grid-cols-2 gap-8">
+                                    {/* Entrada Manual */}
+                                    <div className="bg-gray-50 p-6 rounded-xl border-2 border-gray-200">
+                                        <h2 className="text-2xl font-semibold mb-6 pb-3" style={{color: '#2d5016', borderBottom: '4px solid #3a5a1e'}}>
+                                            Entrada Manual
+                                        </h2>
+                                        
+                                        <div className="mb-6">
+                                            <label className="block mb-2 font-semibold text-gray-700 text-sm">
+                                                Distância (metros)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                value={distance}
+                                                onChange={(e) => setDistance(parseFloat(e.target.value) || 0)}
+                                                className="w-full p-3 border-2 border-gray-300 rounded-lg text-lg"
+                                                step="1"
+                                                min="1"
+                                            />
+                                        </div>
+
+                                        <div className="mb-6">
+                                            <label className="block mb-2 font-semibold text-gray-700 text-sm">
+                                                Adicionar disparo (±{halfWidth.toFixed(1)}cm x ±{halfHeight.toFixed(1)}cm)
+                                            </label>
+                                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                                <input
+                                                    type="number"
+                                                    placeholder="X"
+                                                    value={currentX}
+                                                    onChange={(e) => setCurrentX(e.target.value)}
+                                                    onKeyPress={handleKeyPress}
+                                                    className="p-3 border-2 border-gray-300 rounded-lg"
+                                                    step="0.1"
+                                                />
+                                                <input
+                                                    type="number"
+                                                    placeholder="Y"
+                                                    value={currentY}
+                                                    onChange={(e) => setCurrentY(e.target.value)}
+                                                    onKeyPress={handleKeyPress}
+                                                    className="p-3 border-2 border-gray-300 rounded-lg"
+                                                    step="0.1"
+                                                />
+                                            </div>
+                                            <button 
+                                                onClick={addShot}
+                                                className="w-full text-white py-3 rounded-lg font-semibold"
+                                                style={{background: '#3a5a1e'}}
+                                            >
+                                                + Adicionar
+                                            </button>
+                                        </div>
+
+                                        {shots.length > 0 && (
+                                            <div>
+                                                <label className="block mb-2 font-semibold text-gray-700 text-sm">
+                                                    Disparos ({shots.length})
+                                                </label>
+                                                <div className="max-h-80 overflow-y-auto bg-white rounded-lg border-2 border-gray-300">
+                                                    <table className="w-full text-sm">
+                                                        <thead className="bg-gray-100 sticky top-0">
+                                                            <tr>
+                                                                <th className="px-3 py-2">#</th>
+                                                                <th className="px-3 py-2">X(cm)</th>
+                                                                <th className="px-3 py-2">Y(cm)</th>
+                                                                <th className="px-3 py-2">X(mils)</th>
+                                                                <th className="px-3 py-2">Y(mils)</th>
+                                                                <th className="px-3 py-2"></th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {shots.map((shot, index) => {
+                                                                const xMils = Math.atan((shot.x / 100) / distance) * 1000;
+                                                                const yMils = Math.atan((shot.y / 100) / distance) * 1000;
+                                                                return (
+                                                                    <tr key={index} className="border-b hover:bg-gray-50">
+                                                                        <td className="px-3 py-2 text-center">{index + 1}</td>
+                                                                        <td className="px-3 py-2 text-center">{shot.x.toFixed(1)}</td>
+                                                                        <td className="px-3 py-2 text-center">{shot.y.toFixed(1)}</td>
+                                                                        <td className="px-3 py-2 text-center font-medium" style={{color: '#3a5a1e'}}>{xMils.toFixed(2)}</td>
+                                                                        <td className="px-3 py-2 text-center font-medium" style={{color: '#3a5a1e'}}>{yMils.toFixed(2)}</td>
+                                                                        <td className="px-3 py-2 text-center">
+                                                                            <button 
+                                                                                onClick={() => removeShot(index)}
+                                                                                className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold"
+                                                                            >
+                                                                                ×
+                                                                            </button>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                                <button 
+                                                    onClick={clearAll}
+                                                    className="w-full mt-4 bg-gray-500 text-white py-3 rounded-lg font-semibold"
+                                                >
+                                                    Limpar
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Resultados */}
+                                    <div className="bg-gray-50 p-6 rounded-xl border-2 border-gray-200">
+                                        <h2 className="text-2xl font-semibold mb-6 pb-3" style={{color: '#2d5016', borderBottom: '4px solid #3a5a1e'}}>
+                                            Resultados
+                                        </h2>
+                                        
+                                        {results ? (
+                                            <div className="space-y-4">
+                                                <div className="bg-white p-5 rounded-xl shadow-sm" style={{borderLeft: '4px solid #3a5a1e'}}>
+                                                    <h3 className="text-lg font-semibold mb-3">📍 Ponto Médio</h3>
+                                                    <div className="space-y-2">
+                                                        <div className="flex justify-between py-2 border-b">
+                                                            <span className="font-semibold">X:</span>
+                                                            <span className="font-bold">{results.meanX.toFixed(2)} cm</span>
+                                                        </div>
+                                                        <div className="flex justify-between py-2">
+                                                            <span className="font-semibold">Y:</span>
+                                                            <span className="font-bold">{results.meanY.toFixed(2)} cm</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-white p-5 rounded-xl shadow-sm" style={{borderLeft: '4px solid #3a5a1e'}}>
+                                                    <h3 className="text-lg font-semibold mb-3">🎯 Em Mils</h3>
+                                                    <div className="space-y-2">
+                                                        <div className="flex justify-between py-2 border-b">
+                                                            <span className="font-semibold">Horizontal:</span>
+                                                            <span className="font-bold">{results.meanXMils.toFixed(2)} mils</span>
+                                                        </div>
+                                                        <div className="flex justify-between py-2">
+                                                            <span className="font-semibold">Vertical:</span>
+                                                            <span className="font-bold">{results.meanYMils.toFixed(2)} mils</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-white p-5 rounded-xl shadow-sm" style={{borderLeft: '4px solid #3a5a1e'}}>
+                                                    <h3 className="text-lg font-semibold mb-3">📊 Desvio Padrão</h3>
+                                                    <div className="space-y-2">
+                                                        <div className="flex justify-between py-2 border-b">
+                                                            <span className="font-semibold">Horizontal:</span>
+                                                            <span className="font-bold">{results.stdDevXMils.toFixed(2)} mils</span>
+                                                        </div>
+                                                        <div className="flex justify-between py-2 border-b">
+                                                            <span className="font-semibold">Vertical:</span>
+                                                            <span className="font-bold">{results.stdDevYMils.toFixed(2)} mils</span>
+                                                        </div>
+                                                        <div className="flex justify-between py-2">
+                                                            <span className="font-semibold">Radial:</span>
+                                                            <span className="font-bold">{results.stdDevRadialMils.toFixed(2)} mils</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-16 text-gray-400">
+                                                <p className="text-xl">Adicione disparos</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Alvo */}
+                                <div className="mt-8">
+                                    <h2 className="text-2xl font-semibold mb-6 pb-3" style={{color: '#2d5016', borderBottom: '4px solid #3a5a1e'}}>
+                                        🎯 Visualização do Alvo
+                                    </h2>
+                                    <canvas 
+                                        ref={canvasRef} 
+                                        width={450} 
+                                        height={450} 
+                                        className="bg-white rounded-lg shadow-lg mx-auto"
+                                        style={{maxWidth: '450px', width: '450px', height: '450px'}}
+                                    />
+                                </div>
+
+                                {/* Simulações */}
+                                {shots.length > 0 && (
+                                    <div className="mt-8">
+                                        <h2 className="text-2xl font-semibold mb-6 pb-3" style={{color: '#2d5016', borderBottom: '4px solid #3a5a1e'}}>
+                                            📏 Simulações em Diferentes Distâncias
+                                        </h2>
+                                        <p className="text-gray-600 mb-6">
+                                            Simulação usando alvo <strong>OTAN 2,3m x 2,3m</strong> (padrão)
+                                        </p>
+                                        <div className="grid md:grid-cols-2 gap-6">
+                                            {[100, 500, 1000, 1500].map(d => (
+                                                <DistanceSimulation 
+                                                    key={d}
+                                                    distance={d}
+                                                    shots={shots}
+                                                    results={results}
+                                                    currentDistance={distance}
+                                                />
+                                            ))}
+                                        </div>
+
+                                        <div className="mt-8">
+                                            <button
+                                                onClick={generatePDF}
+                                                className="w-full py-5 text-white rounded-xl font-bold text-xl transition-all transform hover:-translate-y-1 hover:shadow-2xl flex items-center justify-center gap-3"
+                                                style={{background: 'linear-gradient(to right, #2d5016, #3a5a1e)'}}
+                                            >
+                                                <span className="text-2xl">📄</span>
+                                                <span>Gerar Relatório em PDF</span>
+                                            </button>
+                                            <p className="text-center text-gray-600 text-sm mt-3">
+                                                Relatório completo com dados balísticos e visualizações
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
