@@ -13,6 +13,72 @@
         .ares-green { background-color: #2d5016; }
         .ares-green-light { background-color: #3a5a1e; }
         .ares-green-hover:hover { background-color: #4a6b2e; }
+
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            body {
+                font-size: 16px; /* Prevent zoom on iOS */
+            }
+
+            /* Larger touch targets */
+            button, input, select {
+                min-height: 44px; /* iOS recommended touch target */
+                font-size: 16px; /* Prevent zoom on iOS */
+            }
+
+            /* Responsive canvas */
+            canvas {
+                max-width: 100% !important;
+                height: auto !important;
+                width: 100% !important;
+            }
+
+            /* Responsive padding */
+            .mobile-p-2 {
+                padding: 0.5rem !important;
+            }
+
+            .mobile-p-4 {
+                padding: 1rem !important;
+            }
+
+            /* Stack grids on mobile */
+            .mobile-stack {
+                grid-template-columns: 1fr !important;
+            }
+
+            /* Smaller text on mobile */
+            .mobile-text-sm {
+                font-size: 0.875rem !important;
+            }
+
+            .mobile-text-base {
+                font-size: 1rem !important;
+            }
+
+            /* Better table scrolling */
+            .table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            /* Larger icons for touch */
+            .mobile-icon-lg {
+                font-size: 1.5rem;
+            }
+        }
+
+        /* Prevent text selection on buttons */
+        button {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* Smooth scrolling */
+        html {
+            scroll-behavior: smooth;
+        }
     </style>
 </head>
 <body>
@@ -127,20 +193,22 @@
             }, [distance, shots, results, currentDistance, simulatedShots]);
 
             return (
-                <div className="bg-gray-50 p-4 rounded-xl border-2 border-gray-200">
+                <div className="bg-gray-50 p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 border-gray-200">
                     <div className="text-center mb-2">
-                        <span className="text-lg font-bold" style={{color: '#2d5016'}}>{distance}m</span>
+                        <span className="text-base sm:text-lg font-bold" style={{color: '#2d5016'}}>{distance}m</span>
                     </div>
-                    <canvas 
-                        ref={canvasRef} 
-                        width={280} 
-                        height={280} 
-                        className="bg-white rounded-lg shadow-md mx-auto"
-                        style={{maxWidth: '280px', width: '280px', height: '280px'}}
-                    />
+                    <div className="flex justify-center">
+                        <canvas
+                            ref={canvasRef}
+                            width={280}
+                            height={280}
+                            className="bg-white rounded-lg shadow-md w-full max-w-full"
+                            style={{height: 'auto', aspectRatio: '1/1', maxWidth: '280px'}}
+                        />
+                    </div>
                     <div className="text-center mt-2">
-                        <p className="text-xs text-gray-500">OTAN 2,3m x 2,3m</p>
-                        <p className={`text-sm font-semibold ${missedShots > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        <p className="text-xs sm:text-sm text-gray-500">OTAN 2,3m x 2,3m</p>
+                        <p className={`text-xs sm:text-sm font-semibold ${missedShots > 0 ? 'text-red-600' : 'text-green-600'}`}>
                             {missedShots > 0 ? `${missedShots} disparo${missedShots > 1 ? 's' : ''} fora` : 'Todos dentro'}
                         </p>
                     </div>
@@ -175,6 +243,8 @@
             const [clickMode, setClickMode] = useState(false);
             const [deleteMode, setDeleteMode] = useState(false);
             const imageCanvasRef = useRef(null);
+            const longPressTimer = useRef(null);
+            const [touchStartPos, setTouchStartPos] = useState(null);
 
             // Obter dimensões do alvo atual - MEMOIZADO para evitar loops
             const targetDims = useMemo(() => {
@@ -480,9 +550,9 @@
 
             const handleImageRightClick = (e) => {
                 e.preventDefault(); // Prevenir menu de contexto
-                
+
                 if (!imageCanvasRef.current || !isCalibrated || shots.length === 0) return;
-                
+
                 const canvas = imageCanvasRef.current;
                 const rect = canvas.getBoundingClientRect();
                 const scaleX = canvas.width / rect.width;
@@ -501,11 +571,11 @@
                 shots.forEach((shot, index) => {
                     const pixelX = center.x + (shot.x * scaleXCoord);
                     const pixelY = center.y - (shot.y * scaleYCoord);
-                    
+
                     const distance = Math.sqrt(
                         Math.pow(clickX - pixelX, 2) + Math.pow(clickY - pixelY, 2)
                     );
-                    
+
                     if (distance < minDistance && distance < 20) { // Raio de 20 pixels
                         minDistance = distance;
                         closestIndex = index;
@@ -515,6 +585,72 @@
                 if (closestIndex !== -1) {
                     // Remover o disparo mais próximo
                     setShots(shots.filter((_, i) => i !== closestIndex));
+                }
+            };
+
+            // Touch handlers for mobile long press
+            const handleTouchStart = (e) => {
+                if (!imageCanvasRef.current || !isCalibrated) return;
+
+                const touch = e.touches[0];
+                const canvas = imageCanvasRef.current;
+                const rect = canvas.getBoundingClientRect();
+                const scaleX = canvas.width / rect.width;
+                const scaleY = canvas.height / rect.height;
+                const x = (touch.clientX - rect.left) * scaleX;
+                const y = (touch.clientY - rect.top) * scaleY;
+
+                setTouchStartPos({ x, y });
+
+                // Start long press timer (500ms)
+                longPressTimer.current = setTimeout(() => {
+                    // Long press detected - try to delete shot
+                    if (shots.length === 0) return;
+
+                    const { center, top, bottom, left, right } = calibrationPoints;
+                    const scaleYCoord = (bottom.y - top.y) / targetDims.height;
+                    const scaleXCoord = (right.x - left.x) / targetDims.width;
+
+                    let closestIndex = -1;
+                    let minDistance = Infinity;
+
+                    shots.forEach((shot, index) => {
+                        const pixelX = center.x + (shot.x * scaleXCoord);
+                        const pixelY = center.y - (shot.y * scaleYCoord);
+
+                        const distance = Math.sqrt(
+                            Math.pow(x - pixelX, 2) + Math.pow(y - pixelY, 2)
+                        );
+
+                        if (distance < minDistance && distance < 30) {
+                            minDistance = distance;
+                            closestIndex = index;
+                        }
+                    });
+
+                    if (closestIndex !== -1) {
+                        setShots(shots.filter((_, i) => i !== closestIndex));
+                        // Vibrate if available (mobile feedback)
+                        if (navigator.vibrate) {
+                            navigator.vibrate(50);
+                        }
+                    }
+                }, 500);
+            };
+
+            const handleTouchMove = (e) => {
+                // Cancel long press if finger moves
+                if (longPressTimer.current) {
+                    clearTimeout(longPressTimer.current);
+                    longPressTimer.current = null;
+                }
+            };
+
+            const handleTouchEnd = (e) => {
+                // Cancel long press timer
+                if (longPressTimer.current) {
+                    clearTimeout(longPressTimer.current);
+                    longPressTimer.current = null;
                 }
             };
 
@@ -546,8 +682,10 @@
                     const canvas = imageCanvasRef.current;
                     const ctx = canvas.getContext('2d');
 
-                    const maxWidth = Math.min(window.innerWidth - 40, 800);
-                    const maxHeight = Math.min(window.innerHeight * 0.6, 600);
+                    // Mobile-friendly sizing
+                    const isMobile = window.innerWidth < 768;
+                    const maxWidth = isMobile ? window.innerWidth - 32 : Math.min(window.innerWidth - 40, 800);
+                    const maxHeight = isMobile ? window.innerHeight * 0.5 : Math.min(window.innerHeight * 0.6, 600);
                     let width = uploadedImage.width;
                     let height = uploadedImage.height;
 
@@ -873,24 +1011,24 @@
 
             return (
                 <div className="min-h-screen" style={{background: 'linear-gradient(135deg, #1a3d0f 0%, #2d5016 50%, #1a3d0f 100%)'}}>
-                    <div className="max-w-7xl mx-auto p-4">
-                        <div className="bg-white rounded-2xl shadow-2xl overflow-hidden">
-                            <div style={{background: 'linear-gradient(to right, #2d5016, #3a5a1e)'}} className="text-white p-8 text-center">
-                                <div className="flex items-center justify-center mb-4">
-                                    <img src={ARES_LOGO} alt="ARES Logo" className="h-12"/>
+                    <div className="max-w-7xl mx-auto p-2 sm:p-4">
+                        <div className="bg-white rounded-lg sm:rounded-2xl shadow-2xl overflow-hidden">
+                            <div style={{background: 'linear-gradient(to right, #2d5016, #3a5a1e)'}} className="text-white p-4 sm:p-8 text-center">
+                                <div className="flex items-center justify-center mb-2 sm:mb-4">
+                                    <img src={ARES_LOGO} alt="ARES Logo" className="h-8 sm:h-12"/>
                                 </div>
-                                <h1 className="text-4xl font-bold">Cálculo de Dispersão e PMI</h1>
+                                <h1 className="text-xl sm:text-2xl md:text-4xl font-bold">Cálculo de Dispersão e PMI</h1>
                             </div>
 
-                            <div className="p-8">
+                            <div className="p-4 sm:p-6 md:p-8">
                                 {/* Seção de Tipo de Alvo */}
-                                <div className="bg-gray-50 p-6 rounded-xl border-2 border-gray-200 mb-8">
-                                    <h2 className="text-2xl font-semibold mb-6 pb-3" style={{color: '#2d5016', borderBottom: '4px solid #3a5a1e'}}>
-                                        🎯 Configuração do Alvo
+                                <div className="bg-gray-50 p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 border-gray-200 mb-4 sm:mb-8">
+                                    <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-4 sm:mb-6 pb-2 sm:pb-3" style={{color: '#2d5016', borderBottom: '3px solid #3a5a1e'}}>
+                                        <span className="mobile-text-base">🎯 Configuração do Alvo</span>
                                     </h2>
                                     
-                                    <div className="mb-6">
-                                        <label className="block mb-2 font-semibold text-gray-700 text-sm">
+                                    <div className="mb-4 sm:mb-6">
+                                        <label className="block mb-2 font-semibold text-gray-700 text-sm sm:text-base">
                                             Tipo de Alvo
                                         </label>
                                         <select
@@ -908,8 +1046,8 @@
                                                     right: null
                                                 });
                                             }}
-                                            className="w-full p-3 border-2 border-gray-300 rounded-lg text-lg"
-                                            style={{color: '#2d5016', fontWeight: '600'}}
+                                            className="w-full p-3 sm:p-4 border-2 border-gray-300 rounded-lg text-base sm:text-lg"
+                                            style={{color: '#2d5016', fontWeight: '600', minHeight: '44px'}}
                                         >
                                             <option value="otan_230">OTAN 2,3m x 2,3m (230cm x 230cm)</option>
                                             <option value="otan_side">OTAN Side 4,6m x 2,3m (460cm x 230cm)</option>
@@ -920,7 +1058,7 @@
                                     </div>
 
                                     {targetType === 'custom' && (
-                                        <div className="grid grid-cols-2 gap-4 mb-6">
+                                        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
                                             <div>
                                                 <label className="block mb-2 font-semibold text-gray-700 text-sm">
                                                     Largura (cm)
@@ -929,7 +1067,8 @@
                                                     type="number"
                                                     value={customWidth}
                                                     onChange={(e) => setCustomWidth(parseFloat(e.target.value) || 230)}
-                                                    className="w-full p-3 border-2 border-gray-300 rounded-lg"
+                                                    className="w-full p-3 border-2 border-gray-300 rounded-lg text-base"
+                                                    style={{minHeight: '44px'}}
                                                     step="0.1"
                                                     min="10"
                                                 />
@@ -942,7 +1081,8 @@
                                                     type="number"
                                                     value={customHeight}
                                                     onChange={(e) => setCustomHeight(parseFloat(e.target.value) || 230)}
-                                                    className="w-full p-3 border-2 border-gray-300 rounded-lg"
+                                                    className="w-full p-3 border-2 border-gray-300 rounded-lg text-base"
+                                                    style={{minHeight: '44px'}}
                                                     step="0.1"
                                                     min="10"
                                                 />
@@ -961,68 +1101,72 @@
                                 </div>
 
                                 {/* Upload e Calibração */}
-                                <div className="bg-gray-50 p-6 rounded-xl border-2 border-gray-200 mb-8">
-                                    <h2 className="text-2xl font-semibold mb-6 pb-3" style={{color: '#2d5016', borderBottom: '4px solid #3a5a1e'}}>
-                                        📸 Registro por Foto do Alvo
+                                <div className="bg-gray-50 p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 border-gray-200 mb-4 sm:mb-8">
+                                    <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-4 sm:mb-6 pb-2 sm:pb-3" style={{color: '#2d5016', borderBottom: '3px solid #3a5a1e'}}>
+                                        <span className="mobile-text-base">📸 Registro por Foto do Alvo</span>
                                     </h2>
-                                    
-                                    <div className="mb-6">
-                                        <label className="block mb-2 font-semibold text-gray-700 text-sm">
+
+                                    <div className="mb-4 sm:mb-6">
+                                        <label className="block mb-2 font-semibold text-gray-700 text-sm sm:text-base">
                                             Upload da foto do alvo
                                         </label>
                                         <input
                                             type="file"
                                             accept="image/*"
+                                            capture="environment"
                                             onChange={handleImageUpload}
-                                            className="w-full p-3 border-2 border-gray-300 rounded-lg"
+                                            className="w-full p-3 border-2 border-gray-300 rounded-lg text-base"
+                                            style={{minHeight: '44px'}}
                                         />
                                     </div>
 
                                     {uploadedImage && (
                                         <div>
                                             {calibrationMode && (
-                                                <div className="mb-4 p-4 bg-yellow-100 border-2 border-yellow-400 rounded-lg">
-                                                    <h3 className="font-bold text-yellow-800 mb-2">
+                                                <div className="mb-4 p-3 sm:p-4 bg-yellow-100 border-2 border-yellow-400 rounded-lg">
+                                                    <h3 className="font-bold text-yellow-800 mb-2 text-sm sm:text-base">
                                                         🎯 Calibração - Passo {calibrationStep + 1} de 5
                                                     </h3>
-                                                    <p className="text-yellow-900">
+                                                    <p className="text-yellow-900 text-sm sm:text-base">
                                                         Clique no ponto: <strong>{calibrationSteps[calibrationStep].label}</strong>
                                                     </p>
                                                 </div>
                                             )}
 
                                             {isCalibrated && clickMode && (
-                                                <div className="mb-4 p-4 bg-green-100 border-2 border-green-400 rounded-lg">
-                                                    <h3 className="font-bold text-green-800 mb-2">
+                                                <div className="mb-4 p-3 sm:p-4 bg-green-100 border-2 border-green-400 rounded-lg">
+                                                    <h3 className="font-bold text-green-800 mb-2 text-sm sm:text-base">
                                                         ✅ Calibração Concluída!
                                                     </h3>
                                                     {deleteMode ? (
-                                                        <p className="text-red-700 font-bold text-lg mb-2">
-                                                            🗑️ MODO APAGAR ATIVADO - Clique no disparo para remover
+                                                        <p className="text-red-700 font-bold text-base sm:text-lg mb-2">
+                                                            🗑️ MODO APAGAR ATIVADO - Toque no disparo para remover
                                                         </p>
                                                     ) : (
-                                                        <p className="text-green-900 mb-2">
-                                                            <strong>Clique:</strong> Marcar impacto<br/>
-                                                            <strong>Clique direito (PC):</strong> Apagar impacto
+                                                        <p className="text-green-900 mb-2 text-sm sm:text-base">
+                                                            <strong>Toque:</strong> Marcar impacto<br/>
+                                                            <strong>Toque longo (Mobile):</strong> Apagar impacto
                                                         </p>
                                                     )}
                                                     <div className="flex gap-2 mt-3 flex-wrap">
                                                         <button
                                                             onClick={() => setClickMode(!clickMode)}
-                                                            className="px-4 py-2 rounded-lg font-semibold text-white"
-                                                            style={{background: clickMode ? '#f39c12' : '#3a5a1e'}}
+                                                            className="px-4 py-3 rounded-lg font-semibold text-white text-sm sm:text-base flex-1 sm:flex-none"
+                                                            style={{background: clickMode ? '#f39c12' : '#3a5a1e', minHeight: '44px'}}
                                                         >
                                                             {clickMode ? '⏸️ Pausar' : '▶️ Retomar'}
                                                         </button>
                                                         <button
                                                             onClick={() => setDeleteMode(!deleteMode)}
-                                                            className={`px-4 py-2 rounded-lg font-semibold text-white ${deleteMode ? 'bg-red-600' : 'bg-orange-500'}`}
+                                                            className={`px-4 py-3 rounded-lg font-semibold text-white text-sm sm:text-base flex-1 sm:flex-none ${deleteMode ? 'bg-red-600' : 'bg-orange-500'}`}
+                                                            style={{minHeight: '44px'}}
                                                         >
-                                                            {deleteMode ? '❌ Cancelar Apagar' : '🗑️ Apagar Disparo'}
+                                                            {deleteMode ? '❌ Cancelar' : '🗑️ Apagar'}
                                                         </button>
                                                         <button
                                                             onClick={resetCalibration}
-                                                            className="px-4 py-2 bg-red-500 text-white rounded-lg font-semibold"
+                                                            className="px-4 py-3 bg-red-500 text-white rounded-lg font-semibold text-sm sm:text-base flex-1 sm:flex-none"
+                                                            style={{minHeight: '44px'}}
                                                         >
                                                             🔄 Recalibrar
                                                         </button>
@@ -1030,15 +1174,21 @@
                                                 </div>
                                             )}
 
-                                            <div className="flex justify-center">
+                                            <div className="flex justify-center overflow-hidden">
                                                 <canvas
                                                     ref={imageCanvasRef}
                                                     onClick={handleImageClick}
                                                     onContextMenu={handleImageRightClick}
-                                                    className="border-4 rounded-lg shadow-lg max-w-full"
+                                                    onTouchStart={handleTouchStart}
+                                                    onTouchMove={handleTouchMove}
+                                                    onTouchEnd={handleTouchEnd}
+                                                    className="border-2 sm:border-4 rounded-lg shadow-lg max-w-full touch-manipulation"
                                                     style={{
                                                         borderColor: '#3a5a1e',
-                                                        cursor: deleteMode ? 'not-allowed' : 'crosshair'
+                                                        cursor: deleteMode ? 'not-allowed' : 'crosshair',
+                                                        touchAction: 'manipulation',
+                                                        width: '100%',
+                                                        height: 'auto'
                                                     }}
                                                 />
                                             </div>
@@ -1046,55 +1196,58 @@
                                     )}
                                 </div>
 
-                                <div className="grid md:grid-cols-2 gap-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 md:gap-8">
                                     {/* Entrada Manual */}
-                                    <div className="bg-gray-50 p-6 rounded-xl border-2 border-gray-200">
-                                        <h2 className="text-2xl font-semibold mb-6 pb-3" style={{color: '#2d5016', borderBottom: '4px solid #3a5a1e'}}>
-                                            Entrada Manual
+                                    <div className="bg-gray-50 p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 border-gray-200">
+                                        <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-4 sm:mb-6 pb-2 sm:pb-3" style={{color: '#2d5016', borderBottom: '3px solid #3a5a1e'}}>
+                                            <span className="mobile-text-base">Entrada Manual</span>
                                         </h2>
-                                        
-                                        <div className="mb-6">
-                                            <label className="block mb-2 font-semibold text-gray-700 text-sm">
+
+                                        <div className="mb-4 sm:mb-6">
+                                            <label className="block mb-2 font-semibold text-gray-700 text-sm sm:text-base">
                                                 Distância (metros)
                                             </label>
                                             <input
                                                 type="number"
                                                 value={distance}
                                                 onChange={(e) => setDistance(parseFloat(e.target.value) || 0)}
-                                                className="w-full p-3 border-2 border-gray-300 rounded-lg text-lg"
+                                                className="w-full p-3 border-2 border-gray-300 rounded-lg text-base sm:text-lg"
+                                                style={{minHeight: '44px'}}
                                                 step="1"
                                                 min="1"
                                             />
                                         </div>
 
-                                        <div className="mb-6">
-                                            <label className="block mb-2 font-semibold text-gray-700 text-sm">
+                                        <div className="mb-4 sm:mb-6">
+                                            <label className="block mb-2 font-semibold text-gray-700 text-sm sm:text-base">
                                                 Adicionar disparo (±{halfWidth.toFixed(1)}cm x ±{halfHeight.toFixed(1)}cm)
                                             </label>
-                                            <div className="grid grid-cols-2 gap-3 mb-3">
+                                            <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-3">
                                                 <input
                                                     type="number"
-                                                    placeholder="X"
+                                                    placeholder="X (cm)"
                                                     value={currentX}
                                                     onChange={(e) => setCurrentX(e.target.value)}
                                                     onKeyPress={handleKeyPress}
-                                                    className="p-3 border-2 border-gray-300 rounded-lg"
+                                                    className="p-3 border-2 border-gray-300 rounded-lg text-base"
+                                                    style={{minHeight: '44px'}}
                                                     step="0.1"
                                                 />
                                                 <input
                                                     type="number"
-                                                    placeholder="Y"
+                                                    placeholder="Y (cm)"
                                                     value={currentY}
                                                     onChange={(e) => setCurrentY(e.target.value)}
                                                     onKeyPress={handleKeyPress}
-                                                    className="p-3 border-2 border-gray-300 rounded-lg"
+                                                    className="p-3 border-2 border-gray-300 rounded-lg text-base"
+                                                    style={{minHeight: '44px'}}
                                                     step="0.1"
                                                 />
                                             </div>
-                                            <button 
+                                            <button
                                                 onClick={addShot}
-                                                className="w-full text-white py-3 rounded-lg font-semibold"
-                                                style={{background: '#3a5a1e'}}
+                                                className="w-full text-white py-3 rounded-lg font-semibold text-base sm:text-lg"
+                                                style={{background: '#3a5a1e', minHeight: '44px'}}
                                             >
                                                 + Adicionar
                                             </button>
@@ -1102,19 +1255,19 @@
 
                                         {shots.length > 0 && (
                                             <div>
-                                                <label className="block mb-2 font-semibold text-gray-700 text-sm">
+                                                <label className="block mb-2 font-semibold text-gray-700 text-sm sm:text-base">
                                                     Disparos ({shots.length})
                                                 </label>
-                                                <div className="max-h-80 overflow-y-auto bg-white rounded-lg border-2 border-gray-300">
-                                                    <table className="w-full text-sm">
+                                                <div className="max-h-60 sm:max-h-80 overflow-y-auto overflow-x-auto bg-white rounded-lg border-2 border-gray-300">
+                                                    <table className="w-full text-xs sm:text-sm">
                                                         <thead className="bg-gray-100 sticky top-0">
                                                             <tr>
-                                                                <th className="px-3 py-2">#</th>
-                                                                <th className="px-3 py-2">X(cm)</th>
-                                                                <th className="px-3 py-2">Y(cm)</th>
-                                                                <th className="px-3 py-2">X(mils)</th>
-                                                                <th className="px-3 py-2">Y(mils)</th>
-                                                                <th className="px-3 py-2"></th>
+                                                                <th className="px-2 sm:px-3 py-2 text-xs sm:text-sm">#</th>
+                                                                <th className="px-2 sm:px-3 py-2 text-xs sm:text-sm">X(cm)</th>
+                                                                <th className="px-2 sm:px-3 py-2 text-xs sm:text-sm">Y(cm)</th>
+                                                                <th className="px-2 sm:px-3 py-2 text-xs sm:text-sm">X(mils)</th>
+                                                                <th className="px-2 sm:px-3 py-2 text-xs sm:text-sm">Y(mils)</th>
+                                                                <th className="px-2 sm:px-3 py-2"></th>
                                                             </tr>
                                                         </thead>
                                                         <tbody>
@@ -1123,15 +1276,16 @@
                                                                 const yMils = Math.atan((shot.y / 100) / distance) * 1000;
                                                                 return (
                                                                     <tr key={index} className="border-b hover:bg-gray-50">
-                                                                        <td className="px-3 py-2 text-center">{index + 1}</td>
-                                                                        <td className="px-3 py-2 text-center">{shot.x.toFixed(1)}</td>
-                                                                        <td className="px-3 py-2 text-center">{shot.y.toFixed(1)}</td>
-                                                                        <td className="px-3 py-2 text-center font-medium" style={{color: '#3a5a1e'}}>{xMils.toFixed(2)}</td>
-                                                                        <td className="px-3 py-2 text-center font-medium" style={{color: '#3a5a1e'}}>{yMils.toFixed(2)}</td>
-                                                                        <td className="px-3 py-2 text-center">
-                                                                            <button 
+                                                                        <td className="px-2 sm:px-3 py-2 text-center text-xs sm:text-sm">{index + 1}</td>
+                                                                        <td className="px-2 sm:px-3 py-2 text-center text-xs sm:text-sm">{shot.x.toFixed(1)}</td>
+                                                                        <td className="px-2 sm:px-3 py-2 text-center text-xs sm:text-sm">{shot.y.toFixed(1)}</td>
+                                                                        <td className="px-2 sm:px-3 py-2 text-center font-medium text-xs sm:text-sm" style={{color: '#3a5a1e'}}>{xMils.toFixed(2)}</td>
+                                                                        <td className="px-2 sm:px-3 py-2 text-center font-medium text-xs sm:text-sm" style={{color: '#3a5a1e'}}>{yMils.toFixed(2)}</td>
+                                                                        <td className="px-2 sm:px-3 py-2 text-center">
+                                                                            <button
                                                                                 onClick={() => removeShot(index)}
-                                                                                className="bg-red-500 text-white px-2 py-1 rounded text-xs font-bold"
+                                                                                className="bg-red-500 text-white px-3 py-2 rounded text-sm sm:text-base font-bold"
+                                                                                style={{minWidth: '40px', minHeight: '40px'}}
                                                                             >
                                                                                 ×
                                                                             </button>
@@ -1142,64 +1296,65 @@
                                                         </tbody>
                                                     </table>
                                                 </div>
-                                                <button 
+                                                <button
                                                     onClick={clearAll}
-                                                    className="w-full mt-4 bg-gray-500 text-white py-3 rounded-lg font-semibold"
+                                                    className="w-full mt-4 bg-gray-500 text-white py-3 rounded-lg font-semibold text-base sm:text-lg"
+                                                    style={{minHeight: '44px'}}
                                                 >
-                                                    Limpar
+                                                    Limpar Todos
                                                 </button>
                                             </div>
                                         )}
                                     </div>
 
                                     {/* Resultados */}
-                                    <div className="bg-gray-50 p-6 rounded-xl border-2 border-gray-200">
-                                        <h2 className="text-2xl font-semibold mb-6 pb-3" style={{color: '#2d5016', borderBottom: '4px solid #3a5a1e'}}>
-                                            Resultados
+                                    <div className="bg-gray-50 p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 border-gray-200">
+                                        <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-4 sm:mb-6 pb-2 sm:pb-3" style={{color: '#2d5016', borderBottom: '3px solid #3a5a1e'}}>
+                                            <span className="mobile-text-base">Resultados</span>
                                         </h2>
-                                        
+
                                         {results ? (
-                                            <div className="space-y-4">
-                                                <div className="bg-white p-5 rounded-xl shadow-sm" style={{borderLeft: '4px solid #3a5a1e'}}>
-                                                    <h3 className="text-lg font-semibold mb-3">📍 Ponto Médio</h3>
+                                            <div className="space-y-3 sm:space-y-4">
+                                                <div className="bg-white p-4 sm:p-5 rounded-lg sm:rounded-xl shadow-sm" style={{borderLeft: '4px solid #3a5a1e'}}>
+                                                    <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">📍 Ponto Médio</h3>
                                                     <div className="space-y-2">
-                                                        <div className="flex justify-between py-2 border-b">
+                                                        <div className="flex justify-between py-2 border-b text-sm sm:text-base">
                                                             <span className="font-semibold">X:</span>
                                                             <span className="font-bold">{results.meanX.toFixed(2)} cm</span>
                                                         </div>
-                                                        <div className="flex justify-between py-2">
+                                                        <div className="flex justify-between py-2 text-sm sm:text-base">
                                                             <span className="font-semibold">Y:</span>
                                                             <span className="font-bold">{results.meanY.toFixed(2)} cm</span>
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div className="bg-white p-5 rounded-xl shadow-sm" style={{borderLeft: '4px solid #3a5a1e'}}>
-                                                    <h3 className="text-lg font-semibold mb-3">🎯 Em Mils</h3>
+                                                <div className="bg-white p-4 sm:p-5 rounded-lg sm:rounded-xl shadow-sm" style={{borderLeft: '4px solid #3a5a1e'}}>
+                                                    <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">🎯 Em Mils</h3>
                                                     <div className="space-y-2">
-                                                        <div className="flex justify-between py-2 border-b">
+                                                        <div className="flex justify-between py-2 border-b text-sm sm:text-base">
                                                             <span className="font-semibold">Horizontal:</span>
                                                             <span className="font-bold">{results.meanXMils.toFixed(2)} mils</span>
                                                         </div>
-                                                        <div className="flex justify-between py-2">
+                                                        <div className="flex justify-between py-2 text-sm sm:text-base">
                                                             <span className="font-semibold">Vertical:</span>
                                                             <span className="font-bold">{results.meanYMils.toFixed(2)} mils</span>
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div className="bg-white p-5 rounded-xl shadow-sm" style={{borderLeft: '4px solid #3a5a1e'}}>
-                                                    <h3 className="text-lg font-semibold mb-3">📊 Desvio Padrão</h3>
+                                                <div className="bg-white p-4 sm:p-5 rounded-lg sm:rounded-xl shadow-sm" style={{borderLeft: '4px solid #3a5a1e'}}>
+                                                    <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3">📊 Desvio Padrão</h3>
                                                     <div className="space-y-2">
-                                                        <div className="flex justify-between py-2 border-b">
+                                                        <div className="flex justify-between py-2 border-b text-sm sm:text-base">
                                                             <span className="font-semibold">Horizontal:</span>
                                                             <span className="font-bold">{results.stdDevXMils.toFixed(2)} mils</span>
                                                         </div>
-                                                        <div className="flex justify-between py-2 border-b">
+                                                        <div className="flex justify-between py-2 border-b text-sm sm:text-base">
                                                             <span className="font-semibold">Vertical:</span>
                                                             <span className="font-bold">{results.stdDevYMils.toFixed(2)} mils</span>
                                                         </div>
-                                                        <div className="flex justify-between py-2">
+                                                        <div className="flex justify-between py-2 text-sm sm:text-base">
                                                             <span className="font-semibold">Radial:</span>
                                                             <span className="font-bold">{results.stdDevRadialMils.toFixed(2)} mils</span>
                                                         </div>
@@ -1207,39 +1362,41 @@
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="text-center py-16 text-gray-400">
-                                                <p className="text-xl">Adicione disparos</p>
+                                            <div className="text-center py-12 sm:py-16 text-gray-400">
+                                                <p className="text-lg sm:text-xl">Adicione disparos</p>
                                             </div>
                                         )}
                                     </div>
                                 </div>
 
                                 {/* Alvo */}
-                                <div className="mt-8">
-                                    <h2 className="text-2xl font-semibold mb-6 pb-3" style={{color: '#2d5016', borderBottom: '4px solid #3a5a1e'}}>
-                                        🎯 Visualização do Alvo
+                                <div className="mt-4 sm:mt-6 md:mt-8">
+                                    <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-4 sm:mb-6 pb-2 sm:pb-3" style={{color: '#2d5016', borderBottom: '3px solid #3a5a1e'}}>
+                                        <span className="mobile-text-base">🎯 Visualização do Alvo</span>
                                     </h2>
-                                    <canvas 
-                                        ref={canvasRef} 
-                                        width={450} 
-                                        height={450} 
-                                        className="bg-white rounded-lg shadow-lg mx-auto"
-                                        style={{maxWidth: '450px', width: '450px', height: '450px'}}
-                                    />
+                                    <div className="flex justify-center">
+                                        <canvas
+                                            ref={canvasRef}
+                                            width={450}
+                                            height={450}
+                                            className="bg-white rounded-lg shadow-lg w-full max-w-full sm:max-w-md"
+                                            style={{height: 'auto', aspectRatio: '1/1'}}
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* Simulações */}
                                 {shots.length > 0 && (
-                                    <div className="mt-8">
-                                        <h2 className="text-2xl font-semibold mb-6 pb-3" style={{color: '#2d5016', borderBottom: '4px solid #3a5a1e'}}>
-                                            📏 Simulações em Diferentes Distâncias
+                                    <div className="mt-4 sm:mt-6 md:mt-8">
+                                        <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-4 sm:mb-6 pb-2 sm:pb-3" style={{color: '#2d5016', borderBottom: '3px solid #3a5a1e'}}>
+                                            <span className="mobile-text-base">📏 Simulações em Diferentes Distâncias</span>
                                         </h2>
-                                        <p className="text-gray-600 mb-6">
+                                        <p className="text-gray-600 mb-4 sm:mb-6 text-sm sm:text-base">
                                             Simulação usando alvo <strong>OTAN 2,3m x 2,3m</strong> (padrão)
                                         </p>
-                                        <div className="grid md:grid-cols-2 gap-6">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                                             {[100, 500, 1000, 1500].map(d => (
-                                                <DistanceSimulation 
+                                                <DistanceSimulation
                                                     key={d}
                                                     distance={d}
                                                     shots={shots}
@@ -1249,16 +1406,16 @@
                                             ))}
                                         </div>
 
-                                        <div className="mt-8">
+                                        <div className="mt-6 sm:mt-8">
                                             <button
                                                 onClick={generatePDF}
-                                                className="w-full py-5 text-white rounded-xl font-bold text-xl transition-all transform hover:-translate-y-1 hover:shadow-2xl flex items-center justify-center gap-3"
-                                                style={{background: 'linear-gradient(to right, #2d5016, #3a5a1e)'}}
+                                                className="w-full py-4 sm:py-5 text-white rounded-lg sm:rounded-xl font-bold text-base sm:text-lg md:text-xl transition-all transform hover:-translate-y-1 hover:shadow-2xl flex items-center justify-center gap-2 sm:gap-3"
+                                                style={{background: 'linear-gradient(to right, #2d5016, #3a5a1e)', minHeight: '56px'}}
                                             >
-                                                <span className="text-2xl">📄</span>
+                                                <span className="text-xl sm:text-2xl">📄</span>
                                                 <span>Gerar Relatório em PDF</span>
                                             </button>
-                                            <p className="text-center text-gray-600 text-sm mt-3">
+                                            <p className="text-center text-gray-600 text-xs sm:text-sm mt-3">
                                                 Relatório completo com dados balísticos e visualizações
                                             </p>
                                         </div>
