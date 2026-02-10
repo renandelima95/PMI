@@ -1,0 +1,29 @@
+{
+  "sistema": [
+    "REMAX 3",
+    "REMAX 4",
+    "CORCED",
+    "UT30BR",
+    "UT30BR2",
+    "Outro"
+  ],
+  "armamento": [
+    "30mm",
+    "12.7mm",
+    "7.62mm",
+    "Outro"
+  ],
+  "condicoes_teste": [
+    "Estático",
+    "Movimento"
+  ],
+  "tipo_disparo": [
+    "Intermitente",
+    "Rajada"
+  ],
+  "municao": {
+    "30mm": ["HEI", "HET", "APFDS"],
+    "12.7mm": ["Comum", "Traçante"],
+    "7.62mm": ["Comum", "Traçante"]
+  }
+}
