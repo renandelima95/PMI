@@ -3,6 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#262626">
+    <meta name="description" content="ARES - Calculadora de Dispersão e Ponto Médio de Impacto">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ARES PMI">
+    <link rel="manifest" href="./manifest.json">
+    <link rel="apple-touch-icon" href="./assets/icons/icon-192x192.png">
     <title>ARES - Cálculo de Dispersão e PMI</title>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -298,24 +305,48 @@
                 return { srcPoints, dstPoints };
             };
 
+            const loadImageAsDataURL = (src) => {
+                return new Promise((resolve) => {
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0);
+                        resolve(canvas.toDataURL('image/png'));
+                    };
+                    img.onerror = () => resolve(null);
+                    img.src = src;
+                });
+            };
+
             const generatePDF = async () => {
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
                 const results = calculateResults();
-                
+
                 if (!results) {
                     alert('Adicione disparos antes de gerar o PDF');
                     return;
                 }
 
+                // Load logo for PDF
+                const logoDataURL = await loadImageAsDataURL(ARES_LOGO);
+
                 // Header com cor #E5E6E7 (reduzido)
                 doc.setFillColor(229, 230, 231);
                 doc.rect(0, 0, 210, 25, 'F');
-                
+
+                if (logoDataURL) {
+                    doc.addImage(logoDataURL, 'PNG', 5, 3, 40, 7);
+                }
+
                 doc.setTextColor(38, 38, 38);
                 doc.setFontSize(14);
                 doc.setFont('helvetica', 'bold');
-                doc.text('Cálculo de Dispersão e PMI', 105, 12, { align: 'center' });
+                doc.text('Cálculo de Dispersão e PMI', 120, 12, { align: 'center' });
                 
                 const date = new Date().toLocaleString('pt-BR');
                 doc.setFontSize(8);
@@ -437,10 +468,13 @@
                         doc.addPage();
                         doc.setFillColor(229, 230, 231);
                         doc.rect(0, 0, 210, 20, 'F');
+                        if (logoDataURL) {
+                            doc.addImage(logoDataURL, 'PNG', 5, 3, 40, 7);
+                        }
                         doc.setTextColor(38, 38, 38);
                         doc.setFontSize(12);
                         doc.setFont('helvetica', 'bold');
-                        doc.text('Visualização do Alvo e Simulações', 105, 12, { align: 'center' });
+                        doc.text('Visualização do Alvo e Simulações', 120, 12, { align: 'center' });
                         
                         let yPos2 = 25;
                         
@@ -701,10 +735,13 @@
                         doc.addPage();
                         doc.setFillColor(229, 230, 231);
                         doc.rect(0, 0, 210, 35, 'F');
+                        if (logoDataURL) {
+                            doc.addImage(logoDataURL, 'PNG', 5, 5, 40, 7);
+                        }
                         doc.setTextColor(38, 38, 38);
                         doc.setFontSize(16);
                         doc.setFont('helvetica', 'bold');
-                        doc.text('Foto do Alvo', 105, 20, { align: 'center' });
+                        doc.text('Foto do Alvo', 120, 20, { align: 'center' });
                         
                         // Foto original (sem marcações) - usar diretamente o data URL
                         doc.setFontSize(11);
@@ -720,7 +757,7 @@
                         }
                     }
                     
-                    // Footer
+                    // Footer and logo on all pages
                     const pageCount = doc.internal.getNumberOfPages();
                     for (let i = 1; i <= pageCount; i++) {
                         doc.setPage(i);
@@ -1803,6 +1840,16 @@
         }
 
         ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then((reg) => console.log('Service Worker registered:', reg.scope))
+                    .catch((err) => console.log('Service Worker registration failed:', err));
+            });
+        }
     </script>
 </body>
 </html>
