@@ -1561,7 +1561,15 @@
                                             />
                                         </div>
                                         
-                                        {/* Linha 5: GJ Intermitente Az | GJ Intermitente Elv */}
+                                    </div>
+                                </div>
+
+                                {/* Seção Parâmetros GJ */}
+                                <div className="bg-white p-3 sm:p-6 rounded-xl border-2 border-gray-200 mb-4 sm:mb-8">
+                                    <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-6 pb-2 sm:pb-3" style={{color: '#A6A8AA', borderBottom: '2px solid #E5E6E7'}}>
+                                        Parâmetros GJ
+                                    </h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block mb-2 font-semibold text-gray-800 text-sm">GJ Intermitente Az</label>
                                             <input
@@ -1571,7 +1579,6 @@
                                                 className="w-full p-2 border border-gray-300 rounded"
                                             />
                                         </div>
-                                        
                                         <div>
                                             <label className="block mb-2 font-semibold text-gray-800 text-sm">GJ Intermitente Elv</label>
                                             <input
@@ -1581,8 +1588,6 @@
                                                 className="w-full p-2 border border-gray-300 rounded"
                                             />
                                         </div>
-                                        
-                                        {/* Linha 6: GJ Rajada Az | GJ Rajada Elv */}
                                         <div>
                                             <label className="block mb-2 font-semibold text-gray-800 text-sm">GJ Rajada Az</label>
                                             <input
@@ -1592,7 +1597,6 @@
                                                 className="w-full p-2 border border-gray-300 rounded"
                                             />
                                         </div>
-                                        
                                         <div>
                                             <label className="block mb-2 font-semibold text-gray-800 text-sm">GJ Rajada Elv</label>
                                             <input
@@ -1604,7 +1608,7 @@
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 {/* Seção de Tipo de Alvo */}
                                 <div className="bg-white p-3 sm:p-6 rounded-xl border-2 border-gray-200 mb-4 sm:mb-8">
                                     <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-6 pb-2 sm:pb-3" style={{color: '#A6A8AA', borderBottom: '2px solid #E5E6E7'}}>
@@ -1768,9 +1772,8 @@
                                     )}
                                 </div>
 
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
                                     {/* Entrada Manual */}
-                                    <div className="bg-white p-3 sm:p-6 rounded-xl border-2 border-gray-200">
+                                    <div className="bg-white p-3 sm:p-6 rounded-xl border-2 border-gray-200 mb-4 sm:mb-8">
                                         <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-6 pb-2 sm:pb-3" style={{color: '#A6A8AA', borderBottom: '2px solid #E5E6E7'}}>
                                             Entrada Manual
                                         </h2>
@@ -1874,67 +1877,6 @@
                                         )}
                                     </div>
 
-                                    {/* Resultados */}
-                                    <div className="bg-white p-3 sm:p-6 rounded-xl border-2 border-gray-200">
-                                        <h2 className="text-xl sm:text-2xl font-semibold mb-3 sm:mb-6 pb-2 sm:pb-3" style={{color: '#A6A8AA', borderBottom: '2px solid #E5E6E7'}}>
-                                            Resultados
-                                        </h2>
-                                        
-                                        {results ? (
-                                            <div className="space-y-4">
-                                                <div className="bg-white p-5 rounded-xl shadow-sm" style={{borderLeft: '4px solid #262626'}}>
-                                                    <h3 className="text-lg font-semibold mb-3">📍 Ponto Médio</h3>
-                                                    <div className="space-y-2">
-                                                        <div className="flex justify-between py-2 border-b">
-                                                            <span className="font-semibold">X:</span>
-                                                            <span className="font-bold">{results.meanX.toFixed(2)} cm</span>
-                                                        </div>
-                                                        <div className="flex justify-between py-2">
-                                                            <span className="font-semibold">Y:</span>
-                                                            <span className="font-bold">{results.meanY.toFixed(2)} cm</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="bg-white p-5 rounded-xl shadow-sm" style={{borderLeft: '4px solid #262626'}}>
-                                                    <h3 className="text-lg font-semibold mb-3"> Em Mils</h3>
-                                                    <div className="space-y-2">
-                                                        <div className="flex justify-between py-2 border-b">
-                                                            <span className="font-semibold">Horizontal:</span>
-                                                            <span className="font-bold">{results.meanXMils.toFixed(2)} mils</span>
-                                                        </div>
-                                                        <div className="flex justify-between py-2">
-                                                            <span className="font-semibold">Vertical:</span>
-                                                            <span className="font-bold">{results.meanYMils.toFixed(2)} mils</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                <div className="bg-white p-5 rounded-xl shadow-sm" style={{borderLeft: '4px solid #262626'}}>
-                                                    <h3 className="text-lg font-semibold mb-3">📊 Desvio Padrão</h3>
-                                                    <div className="space-y-2">
-                                                        <div className="flex justify-between py-2 border-b">
-                                                            <span className="font-semibold">Horizontal:</span>
-                                                            <span className="font-bold">{results.stdDevXMils.toFixed(2)} mils</span>
-                                                        </div>
-                                                        <div className="flex justify-between py-2 border-b">
-                                                            <span className="font-semibold">Vertical:</span>
-                                                            <span className="font-bold">{results.stdDevYMils.toFixed(2)} mils</span>
-                                                        </div>
-                                                        <div className="flex justify-between py-2">
-                                                            <span className="font-semibold">Radial:</span>
-                                                            <span className="font-bold">{results.stdDevRadialMils.toFixed(2)} mils</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            <div className="text-center py-16 text-gray-800">
-                                                <p className="text-xl">Adicione disparos</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
 
                                 {/* Visualização */}
                                 {shots.length > 0 && (
@@ -1943,16 +1885,70 @@
                                              Visualização do Alvo
                                         </h2>
                                         
-                                        {/* Alvo Principal - Grande */}
-                                        <div className="mb-6">
-                                            <p className="text-gray-600 mb-3 text-sm font-semibold">Alvo Real - {distance}m</p>
-                                            <canvas 
-                                                ref={canvasRef} 
-                                                width={450} 
-                                                height={450} 
-                                                className="bg-white rounded-lg shadow-lg mx-auto"
-                                                style={{maxWidth: '450px', width: '100%', height: 'auto'}}
-                                            />
+                                        {/* Alvo Principal + Resultados */}
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8 mb-6 items-start">
+                                            <div>
+                                                <p className="text-gray-600 mb-3 text-sm font-semibold">Alvo Real - {distance}m</p>
+                                                <canvas
+                                                    ref={canvasRef}
+                                                    width={450}
+                                                    height={450}
+                                                    className="bg-white rounded-lg shadow-lg mx-auto"
+                                                    style={{maxWidth: '450px', width: '100%', height: 'auto'}}
+                                                />
+                                            </div>
+                                            <div className="bg-white p-3 sm:p-4 rounded-xl border-2 border-gray-200">
+                                                <h3 className="text-lg sm:text-xl font-semibold mb-3 pb-2" style={{color: '#A6A8AA', borderBottom: '2px solid #E5E6E7'}}>
+                                                    Resultados
+                                                </h3>
+                                                {results ? (
+                                                    <table className="w-full text-sm">
+                                                        <tbody>
+                                                            <tr className="bg-gray-50">
+                                                                <td colSpan="2" className="px-3 py-2 font-semibold text-gray-800">Ponto Médio</td>
+                                                            </tr>
+                                                            <tr className="border-b">
+                                                                <td className="px-3 py-2">X</td>
+                                                                <td className="px-3 py-2 text-right font-bold">{results.meanX.toFixed(2)} cm</td>
+                                                            </tr>
+                                                            <tr className="border-b">
+                                                                <td className="px-3 py-2">Y</td>
+                                                                <td className="px-3 py-2 text-right font-bold">{results.meanY.toFixed(2)} cm</td>
+                                                            </tr>
+                                                            <tr className="bg-gray-50">
+                                                                <td colSpan="2" className="px-3 py-2 font-semibold text-gray-800">Em Mils</td>
+                                                            </tr>
+                                                            <tr className="border-b">
+                                                                <td className="px-3 py-2">Horizontal</td>
+                                                                <td className="px-3 py-2 text-right font-bold">{results.meanXMils.toFixed(2)} mils</td>
+                                                            </tr>
+                                                            <tr className="border-b">
+                                                                <td className="px-3 py-2">Vertical</td>
+                                                                <td className="px-3 py-2 text-right font-bold">{results.meanYMils.toFixed(2)} mils</td>
+                                                            </tr>
+                                                            <tr className="bg-gray-50">
+                                                                <td colSpan="2" className="px-3 py-2 font-semibold text-gray-800">Desvio Padrão</td>
+                                                            </tr>
+                                                            <tr className="border-b">
+                                                                <td className="px-3 py-2">Horizontal</td>
+                                                                <td className="px-3 py-2 text-right font-bold">{results.stdDevXMils.toFixed(2)} mils</td>
+                                                            </tr>
+                                                            <tr className="border-b">
+                                                                <td className="px-3 py-2">Vertical</td>
+                                                                <td className="px-3 py-2 text-right font-bold">{results.stdDevYMils.toFixed(2)} mils</td>
+                                                            </tr>
+                                                            <tr>
+                                                                <td className="px-3 py-2">Radial</td>
+                                                                <td className="px-3 py-2 text-right font-bold">{results.stdDevRadialMils.toFixed(2)} mils</td>
+                                                            </tr>
+                                                        </tbody>
+                                                    </table>
+                                                ) : (
+                                                    <div className="text-center py-8 text-gray-800">
+                                                        <p className="text-sm">Adicione disparos</p>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
 
                                         {/* Simulações - Pequenas */}
