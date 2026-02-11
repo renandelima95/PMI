@@ -190,6 +190,8 @@
             const imageCanvasRef = useRef(null);
             
             // Estados para Cenário de Teste
+            const [descricao, setDescricao] = useState('');
+            const [atirador, setAtirador] = useState('');
             const [sistema, setSistema] = useState(() => localStorage.getItem('cenario_sistema') || 'REMAX 3');
             const [sistemaOutro, setSistemaOutro] = useState('');
             const [sn, setSn] = useState('');
@@ -198,6 +200,7 @@
             const [condicoesTeste, setCondicoesTeste] = useState(() => localStorage.getItem('cenario_condicoes') || 'Estático');
             const [cenarioMovimento, setCenarioMovimento] = useState('');
             const [tipoMunicao, setTipoMunicao] = useState(() => localStorage.getItem('cenario_municao') || 'HEI');
+            const [municaoOutro, setMunicaoOutro] = useState('');
             const [tipoDisparo, setTipoDisparo] = useState(() => localStorage.getItem('cenario_disparo') || 'Intermitente');
             const [qtdDisparos, setQtdDisparos] = useState('');
             const [modo, setModo] = useState('');
@@ -332,15 +335,29 @@
                     return;
                 }
 
-                // Load logo for PDF
+                // Load logos for PDF
                 const logoDataURL = await loadImageAsDataURL(ARES_LOGO);
+                // Load system-specific logo (e.g. UT30BR.png)
+                const sistemaName = sistema === 'Outro' ? null : sistema;
+                const systemLogoURL = sistemaName ? await loadImageAsDataURL(`./assets/${sistemaName}.png`) : null;
 
-                // Helper: draw standard page header
+                // Logo dimensions
+                const logoW = 39;
+                const logoH = 7;
+
+                // Helper: draw standard page header with ARES logo centered-left and system logo on right
                 const drawHeader = (title) => {
                     doc.setFillColor(229, 230, 231);
                     doc.rect(0, 0, 210, 25, 'F');
                     if (logoDataURL) {
-                        doc.addImage(logoDataURL, 'PNG', 7, 5, 39, 7);
+                        // Center the ARES logo: place it so that the title area is truly centered
+                        const aresLogoX = 10;
+                        doc.addImage(logoDataURL, 'PNG', aresLogoX, 5, logoW, logoH);
+                    }
+                    if (systemLogoURL) {
+                        // System logo on the right side, same size as ARES logo
+                        const sysLogoX = 210 - 10 - logoW;
+                        doc.addImage(systemLogoURL, 'PNG', sysLogoX, 5, logoW, logoH);
                     }
                     doc.setTextColor(38, 38, 38);
                     doc.setFontSize(14);
@@ -353,11 +370,14 @@
                 };
 
                 // Preparar valores
+                const descricaoText = descricao || '-';
+                const atiradorText = atirador || '-';
                 const sistemaText = sistema === 'Outro' ? (sistemaOutro || '-') : (sistema || '-');
                 const snText = sn || '-';
                 const armamentoText = armamento === 'Outro' ? (armamentoOutro || '-') : (armamento || '-');
-                const municaoText = tipoMunicao || '-';
+                const municaoText = armamento === 'Outro' ? (municaoOutro || 'Outro') : (tipoMunicao || '-');
                 const condicoesText = condicoesTeste || '-';
+                const movimentoText = (condicoesTeste === 'Movimento' && cenarioMovimento) ? cenarioMovimento : '';
                 const modoText = modo || '-';
                 const disparoText = tipoDisparo || '-';
                 const qtdText = qtdDisparos || '-';
@@ -380,12 +400,11 @@
                 y += 2;
 
                 const scenarioData = [
+                    ['Descrição', descricaoText, 'Atirador', atiradorText],
                     ['Sistema', sistemaText, 'S/N', snText],
                     ['Armamento', armamentoText, 'Munição', municaoText],
-                    ['Condições', condicoesText, 'Modo', modoText],
+                    ['Condições', condicoesText + (movimentoText ? ` - ${movimentoText}` : ''), 'Modo', modoText],
                     ['Tipo Disparo', disparoText, 'Qtd Disparos', qtdText],
-                    ['GJ Interm. Az', gjIntermAzText, 'GJ Interm. Elv', gjIntermElvText],
-                    ['GJ Rajada Az', gjRajadaAzText, 'GJ Rajada Elv', gjRajadaElvText],
                 ];
 
                 const cellH = 6;
@@ -393,38 +412,42 @@
                 const valueW = 40;
                 const colPairW = labelW + valueW;
                 const tableX = 15;
+                const fullTableW = 180;
 
-                scenarioData.forEach((row, ri) => {
-                    const rowY = y + ri * cellH;
-                    // Alternate row background
-                    if (ri % 2 === 0) {
-                        doc.setFillColor(245, 245, 245);
-                        doc.rect(tableX, rowY, colPairW * 2 + 30, cellH, 'F');
-                    }
-                    // Pair 1
-                    doc.setFontSize(7);
-                    doc.setFont('helvetica', 'bold');
-                    doc.setTextColor(80, 80, 80);
-                    doc.text(row[0], tableX + 2, rowY + 4);
-                    doc.setFont('helvetica', 'normal');
-                    doc.setTextColor(0, 0, 0);
-                    doc.text(row[1], tableX + labelW + 2, rowY + 4);
-                    // Pair 2
-                    const col2Start = tableX + colPairW + 15;
-                    doc.setFont('helvetica', 'bold');
-                    doc.setTextColor(80, 80, 80);
-                    doc.text(row[2], col2Start + 2, rowY + 4);
-                    doc.setFont('helvetica', 'normal');
-                    doc.setTextColor(0, 0, 0);
-                    doc.text(row[3], col2Start + labelW + 2, rowY + 4);
-                });
-                // Table border
-                const tableH = scenarioData.length * cellH;
-                doc.setDrawColor(200, 200, 200);
-                doc.setLineWidth(0.3);
-                doc.rect(tableX, y, colPairW * 2 + 30, tableH);
+                // Helper to draw a 2-column paired table
+                const drawPairedTable = (data, startY) => {
+                    data.forEach((row, ri) => {
+                        const rowY = startY + ri * cellH;
+                        if (ri % 2 === 0) {
+                            doc.setFillColor(245, 245, 245);
+                            doc.rect(tableX, rowY, fullTableW, cellH, 'F');
+                        }
+                        doc.setFontSize(7);
+                        doc.setFont('helvetica', 'bold');
+                        doc.setTextColor(80, 80, 80);
+                        doc.text(row[0], tableX + 2, rowY + 4);
+                        doc.setFont('helvetica', 'normal');
+                        doc.setTextColor(0, 0, 0);
+                        // Truncate long values to fit
+                        const val1 = doc.splitTextToSize(row[1], valueW + 15);
+                        doc.text(val1[0], tableX + labelW + 2, rowY + 4);
+                        const col2Start = tableX + fullTableW / 2;
+                        doc.setFont('helvetica', 'bold');
+                        doc.setTextColor(80, 80, 80);
+                        doc.text(row[2], col2Start + 2, rowY + 4);
+                        doc.setFont('helvetica', 'normal');
+                        doc.setTextColor(0, 0, 0);
+                        doc.text(row[3], col2Start + labelW + 2, rowY + 4);
+                    });
+                    const tH = data.length * cellH;
+                    doc.setDrawColor(200, 200, 200);
+                    doc.setLineWidth(0.3);
+                    doc.rect(tableX, startY, fullTableW, tH);
+                    return tH;
+                };
 
-                y += tableH + 4;
+                const scenarioH = drawPairedTable(scenarioData, y);
+                y += scenarioH + 4;
 
                 // --- Parâmetros do Alvo ---
                 doc.setFontSize(11);
@@ -437,89 +460,80 @@
                     ['Tipo de Alvo', TARGET_TYPES[targetType]?.name || 'Customizado', 'Distância', `${distance} m`],
                     ['Dimensões', `${targetDims.width.toFixed(1)} x ${targetDims.height.toFixed(1)} cm`, 'Disparos', `${shots.length}`],
                 ];
-                targetData.forEach((row, ri) => {
-                    const rowY = y + ri * cellH;
-                    if (ri % 2 === 0) {
-                        doc.setFillColor(245, 245, 245);
-                        doc.rect(tableX, rowY, colPairW * 2 + 30, cellH, 'F');
-                    }
-                    doc.setFontSize(7);
-                    doc.setFont('helvetica', 'bold');
-                    doc.setTextColor(80, 80, 80);
-                    doc.text(row[0], tableX + 2, rowY + 4);
-                    doc.setFont('helvetica', 'normal');
-                    doc.setTextColor(0, 0, 0);
-                    doc.text(row[1], tableX + labelW + 2, rowY + 4);
-                    const col2Start = tableX + colPairW + 15;
-                    doc.setFont('helvetica', 'bold');
-                    doc.setTextColor(80, 80, 80);
-                    doc.text(row[2], col2Start + 2, rowY + 4);
-                    doc.setFont('helvetica', 'normal');
-                    doc.setTextColor(0, 0, 0);
-                    doc.text(row[3], col2Start + labelW + 2, rowY + 4);
-                });
-                doc.setDrawColor(200, 200, 200);
-                doc.rect(tableX, y, colPairW * 2 + 30, targetData.length * cellH);
+                const targetH = drawPairedTable(targetData, y);
+                y += targetH + 6;
 
-                y += targetData.length * cellH + 4;
+                // --- Parâmetros GJ (separate table) ---
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(38, 38, 38);
+                doc.text('Parâmetros GJ', 15, y);
+                y += 2;
 
-                // --- Alvo principal + Resultados side by side ---
+                const gjData = [
+                    ['GJ Interm. Az', gjIntermAzText, 'GJ Interm. Elv', gjIntermElvText],
+                    ['GJ Rajada Az', gjRajadaAzText, 'GJ Rajada Elv', gjRajadaElvText],
+                ];
+                const gjH = drawPairedTable(gjData, y);
+                y += gjH + 6;
+
+                // --- Alvo principal (bigger) + Resultados full-width below ---
                 if (canvasRef.current && shots.length > 0) {
                     const imgData = canvasRef.current.toDataURL('image/png');
-                    const targetImgSize = 80;
-                    doc.addImage(imgData, 'PNG', 15, y, targetImgSize, targetImgSize);
+                    // Check if target image fits on current page, otherwise add new page
+                    const targetImgSize = 95;
+                    if (y + targetImgSize + 50 > 280) {
+                        doc.addPage();
+                        drawHeader('Cálculo de Dispersão e PMI');
+                        y = 30;
+                    }
+                    const imgX = (210 - targetImgSize) / 2;
+                    doc.addImage(imgData, 'PNG', imgX, y, targetImgSize, targetImgSize);
+                    y += targetImgSize + 5;
 
-                    // Resultados on the right side of the target
-                    const rX = 105;
-                    let rY = y + 2;
-
+                    // --- Resultados (full-width table) ---
                     doc.setFontSize(11);
                     doc.setFont('helvetica', 'bold');
                     doc.setTextColor(38, 38, 38);
-                    doc.text('Resultados', rX, rY);
-                    rY += 7;
+                    doc.text('Resultados', 15, y);
+                    y += 3;
 
-                    // PMI section
+                    // PMI section - full width
                     doc.setFillColor(245, 245, 245);
-                    doc.rect(rX, rY - 4, 90, 16, 'F');
+                    doc.rect(tableX, y, fullTableW, 14, 'F');
                     doc.setDrawColor(200, 200, 200);
-                    doc.rect(rX, rY - 4, 90, 16);
+                    doc.rect(tableX, y, fullTableW, 14);
 
                     doc.setFontSize(8);
                     doc.setFont('helvetica', 'bold');
                     doc.setTextColor(38, 38, 38);
-                    doc.text('Ponto Médio de Impacto (PMI)', rX + 3, rY);
-                    rY += 4;
+                    doc.text('Ponto Médio de Impacto (PMI)', tableX + 3, y + 5);
                     doc.setFontSize(7);
                     doc.setFont('helvetica', 'normal');
                     doc.setTextColor(0, 0, 0);
-                    doc.text(`X: ${results.meanX.toFixed(2)} cm  |  ${results.meanXMils.toFixed(2)} mils`, rX + 3, rY);
-                    rY += 3.5;
-                    doc.text(`Y: ${results.meanY.toFixed(2)} cm  |  ${results.meanYMils.toFixed(2)} mils`, rX + 3, rY);
-                    rY += 7;
+                    doc.text(`X: ${results.meanX.toFixed(2)} cm  |  ${results.meanXMils.toFixed(2)} mils`, tableX + 3, y + 10);
+                    doc.text(`Y: ${results.meanY.toFixed(2)} cm  |  ${results.meanYMils.toFixed(2)} mils`, tableX + fullTableW / 2, y + 10);
+                    y += 16;
 
-                    // Dispersão section
+                    // Dispersão section - full width
                     doc.setFillColor(245, 245, 245);
-                    doc.rect(rX, rY - 4, 90, 19, 'F');
+                    doc.rect(tableX, y, fullTableW, 14, 'F');
                     doc.setDrawColor(200, 200, 200);
-                    doc.rect(rX, rY - 4, 90, 19);
+                    doc.rect(tableX, y, fullTableW, 14);
 
                     doc.setFontSize(8);
                     doc.setFont('helvetica', 'bold');
                     doc.setTextColor(38, 38, 38);
-                    doc.text('Desvio Padrão (Dispersão)', rX + 3, rY);
-                    rY += 4;
+                    doc.text('Desvio Padrão (Dispersão)', tableX + 3, y + 5);
                     doc.setFontSize(7);
                     doc.setFont('helvetica', 'normal');
                     doc.setTextColor(0, 0, 0);
-                    doc.text(`Horizontal: ${results.stdDevXMils.toFixed(2)} mils`, rX + 3, rY);
-                    rY += 3.5;
-                    doc.text(`Vertical: ${results.stdDevYMils.toFixed(2)} mils`, rX + 3, rY);
-                    rY += 3.5;
-                    doc.text(`Radial: ${results.stdDevRadialMils.toFixed(2)} mils`, rX + 3, rY);
-                    rY += 5;
+                    doc.text(`Horizontal: ${results.stdDevXMils.toFixed(2)} mils`, tableX + 3, y + 10);
+                    doc.text(`Vertical: ${results.stdDevYMils.toFixed(2)} mils`, tableX + 65, y + 10);
+                    doc.text(`Radial: ${results.stdDevRadialMils.toFixed(2)} mils`, tableX + 125, y + 10);
+                    y += 16;
 
-                    // Shot status
+                    // Shot status - below the results table, no overlap
                     const shotsInside = shots.filter(shot => {
                         const halfW = targetDims.width / 2;
                         const halfH = targetDims.height / 2;
@@ -531,15 +545,20 @@
                     doc.setFont('helvetica', 'bold');
                     if (shotsOutside > 0) {
                         doc.setTextColor(220, 38, 38);
-                        doc.text(`${shotsOutside} disparo${shotsOutside > 1 ? 's' : ''} fora do alvo`, rX + 3, rY);
+                        doc.text(`${shotsOutside} disparo${shotsOutside > 1 ? 's' : ''} fora do alvo`, tableX + 3, y);
                     } else {
                         doc.setTextColor(34, 139, 34);
-                        doc.text('Todos os disparos dentro do alvo', rX + 3, rY);
+                        doc.text('Todos os disparos dentro do alvo', tableX + 3, y);
                     }
-
-                    y += targetImgSize + 5;
+                    y += 8;
 
                     // --- Simulações ---
+                    // Check if simulations fit on current page
+                    if (y + 55 > 280) {
+                        doc.addPage();
+                        drawHeader('Simulações');
+                        y = 30;
+                    }
                     doc.setFontSize(11);
                     doc.setFont('helvetica', 'bold');
                     doc.setTextColor(38, 38, 38);
@@ -641,21 +660,21 @@
                 drawHeader('Tabela de Disparos');
                 let yPos = 32;
 
-                // Column definitions for proper grid table
+                // Column definitions for proper grid table (full width: 15 to 195 = 180)
                 const colDefs = [
                     { label: '#', x: 15, w: 15 },
-                    { label: 'X (cm)', x: 30, w: 30 },
-                    { label: 'Y (cm)', x: 60, w: 30 },
-                    { label: 'X (mils)', x: 90, w: 30 },
-                    { label: 'Y (mils)', x: 120, w: 30 },
-                    { label: 'Distância (m)', x: 150, w: 30 },
+                    { label: 'X (cm)', x: 30, w: 33 },
+                    { label: 'Y (cm)', x: 63, w: 33 },
+                    { label: 'X (mils)', x: 96, w: 33 },
+                    { label: 'Y (mils)', x: 129, w: 33 },
+                    { label: 'Distância (m)', x: 162, w: 33 },
                 ];
-                const totalW = colDefs.reduce((s, c) => s + c.w, 0) - colDefs[0].x + 15;
+                const totalTableW = 180;
                 const rowH = 7;
 
                 const drawTableHeader = (yy) => {
                     doc.setFillColor(38, 38, 38);
-                    doc.rect(colDefs[0].x, yy - 5, 180 - colDefs[0].x, rowH, 'F');
+                    doc.rect(colDefs[0].x, yy - 5, totalTableW, rowH, 'F');
                     doc.setFontSize(8);
                     doc.setFont('helvetica', 'bold');
                     doc.setTextColor(255, 255, 255);
@@ -691,13 +710,13 @@
                     // Alternate row background
                     if (index % 2 === 0) {
                         doc.setFillColor(248, 248, 248);
-                        doc.rect(colDefs[0].x, yPos - 5, 180 - colDefs[0].x, rowH, 'F');
+                        doc.rect(colDefs[0].x, yPos - 5, totalTableW, rowH, 'F');
                     }
 
                     // Row border
                     doc.setDrawColor(220, 220, 220);
                     doc.setLineWidth(0.1);
-                    doc.rect(colDefs[0].x, yPos - 5, 180 - colDefs[0].x, rowH);
+                    doc.rect(colDefs[0].x, yPos - 5, totalTableW, rowH);
 
                     // Cell borders
                     colDefs.forEach(col => {
@@ -728,9 +747,9 @@
                     yPos = drawTableHeader(yPos);
                 }
                 doc.setFillColor(229, 230, 231);
-                doc.rect(colDefs[0].x, yPos - 5, 180 - colDefs[0].x, rowH * 2, 'F');
+                doc.rect(colDefs[0].x, yPos - 5, totalTableW, rowH * 2, 'F');
                 doc.setDrawColor(200, 200, 200);
-                doc.rect(colDefs[0].x, yPos - 5, 180 - colDefs[0].x, rowH * 2);
+                doc.rect(colDefs[0].x, yPos - 5, totalTableW, rowH * 2);
 
                 doc.setFontSize(7);
                 doc.setFont('helvetica', 'bold');
@@ -1368,6 +1387,29 @@
                                     </h2>
                                     
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {/* Linha 0: Descrição | Atirador */}
+                                        <div>
+                                            <label className="block mb-2 font-semibold text-gray-800 text-sm">Descrição</label>
+                                            <input
+                                                type="text"
+                                                value={descricao}
+                                                onChange={(e) => setDescricao(e.target.value)}
+                                                className="w-full p-2 border border-gray-300 rounded"
+                                                placeholder="Descrição do teste"
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block mb-2 font-semibold text-gray-800 text-sm">Atirador</label>
+                                            <input
+                                                type="text"
+                                                value={atirador}
+                                                onChange={(e) => setAtirador(e.target.value)}
+                                                className="w-full p-2 border border-gray-300 rounded"
+                                                placeholder="Nome do atirador"
+                                            />
+                                        </div>
+
                                         {/* Linha 1: Sistema | SN */}
                                         <div>
                                             <label className="block mb-2 font-semibold text-gray-800 text-sm">Sistema</label>
@@ -1408,7 +1450,9 @@
                                                 value={armamento}
                                                 onChange={(e) => {
                                                     setArmamento(e.target.value);
-                                                    if (e.target.value !== 'Outro' && config.municao[e.target.value]) {
+                                                    if (e.target.value === 'Outro') {
+                                                        setTipoMunicao('Outro');
+                                                    } else if (config.municao[e.target.value]) {
                                                         setTipoMunicao(config.municao[e.target.value][0]);
                                                     }
                                                 }}
@@ -1431,16 +1475,33 @@
                                         
                                         <div>
                                             <label className="block mb-2 font-semibold text-gray-800 text-sm">Munição</label>
-                                            <select
-                                                value={tipoMunicao}
-                                                onChange={(e) => setTipoMunicao(e.target.value)}
-                                                className="w-full p-2 border border-gray-300 rounded"
-                                                disabled={armamento === 'Outro'}
-                                            >
-                                                {armamento !== 'Outro' && config.municao[armamento] && config.municao[armamento].map(opt => (
-                                                    <option key={opt} value={opt}>{opt}</option>
-                                                ))}
-                                            </select>
+                                            {armamento === 'Outro' ? (
+                                                <>
+                                                    <input
+                                                        type="text"
+                                                        value="Outro"
+                                                        disabled
+                                                        className="w-full p-2 border border-gray-300 rounded bg-gray-100 text-gray-500"
+                                                    />
+                                                    <input
+                                                        type="text"
+                                                        value={municaoOutro}
+                                                        onChange={(e) => setMunicaoOutro(e.target.value)}
+                                                        placeholder="Especifique a munição"
+                                                        className="w-full p-2 border border-gray-300 rounded mt-2"
+                                                    />
+                                                </>
+                                            ) : (
+                                                <select
+                                                    value={tipoMunicao}
+                                                    onChange={(e) => setTipoMunicao(e.target.value)}
+                                                    className="w-full p-2 border border-gray-300 rounded"
+                                                >
+                                                    {config.municao[armamento] && config.municao[armamento].map(opt => (
+                                                        <option key={opt} value={opt}>{opt}</option>
+                                                    ))}
+                                                </select>
+                                            )}
                                         </div>
                                         
                                         {/* Linha 3: Condições de Teste | Modo */}
