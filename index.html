@@ -139,21 +139,21 @@
             }, [distance, shots, results, currentDistance, simulatedShots]);
 
             return (
-                <div className="bg-white p-4 rounded-xl border-2 border-gray-200">
-                    <div className="text-center mb-2">
-                        <span className="text-lg font-bold" style={{color: '#262626'}}>{distance}m</span>
+                <div className="bg-white p-2 sm:p-4 rounded-xl border-2 border-gray-200">
+                    <div className="text-center mb-1 sm:mb-2">
+                        <span className="text-sm sm:text-lg font-bold" style={{color: '#262626'}}>{distance}m</span>
                     </div>
-                    <canvas 
-                        ref={canvasRef} 
-                        width={280} 
-                        height={280} 
+                    <canvas
+                        ref={canvasRef}
+                        width={280}
+                        height={280}
                         className="bg-white rounded-lg shadow-md mx-auto"
-                        style={{maxWidth: '280px', width: '280px', height: '280px'}}
+                        style={{maxWidth: '100%', width: '100%', height: 'auto'}}
                     />
-                    <div className="text-center mt-2">
-                        <p className="text-xs text-gray-500">OTAN 2,3m x 2,3m</p>
-                        <p className={`text-sm font-semibold ${missedShots > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                            {missedShots > 0 ? `${missedShots} disparo${missedShots > 1 ? 's' : ''} fora` : 'Todos dentro'}
+                    <div className="text-center mt-1 sm:mt-2">
+                        <p className="text-xs text-gray-500 hidden sm:block">OTAN 2,3m x 2,3m</p>
+                        <p className={`text-xs sm:text-sm font-semibold ${missedShots > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            {missedShots > 0 ? `${missedShots} fora` : 'Todos dentro'}
                         </p>
                     </div>
                 </div>
@@ -340,18 +340,18 @@
                 doc.rect(0, 0, 210, 25, 'F');
 
                 if (logoDataURL) {
-                    doc.addImage(logoDataURL, 'PNG', 5, 3, 40, 7);
+                    doc.addImage(logoDataURL, 'PNG', 7, 5, 39, 7);
                 }
 
                 doc.setTextColor(38, 38, 38);
                 doc.setFontSize(14);
                 doc.setFont('helvetica', 'bold');
-                doc.text('Cálculo de Dispersão e PMI', 120, 12, { align: 'center' });
-                
+                doc.text('Cálculo de Dispersão e PMI', 105, 11, { align: 'center' });
+
                 const date = new Date().toLocaleString('pt-BR');
                 doc.setFontSize(8);
                 doc.setFont('helvetica', 'normal');
-                doc.text(`Gerado em: ${date}`, 105, 19, { align: 'center' });
+                doc.text(`Gerado em: ${date}`, 105, 18, { align: 'center' });
                 
                 doc.setTextColor(0, 0, 0);
                 let yPos = 35;
@@ -469,12 +469,12 @@
                         doc.setFillColor(229, 230, 231);
                         doc.rect(0, 0, 210, 20, 'F');
                         if (logoDataURL) {
-                            doc.addImage(logoDataURL, 'PNG', 5, 3, 40, 7);
+                            doc.addImage(logoDataURL, 'PNG', 7, 3.5, 39, 7);
                         }
                         doc.setTextColor(38, 38, 38);
                         doc.setFontSize(12);
                         doc.setFont('helvetica', 'bold');
-                        doc.text('Visualização do Alvo e Simulações', 120, 12, { align: 'center' });
+                        doc.text('Visualização do Alvo e Simulações', 105, 12, { align: 'center' });
                         
                         let yPos2 = 25;
                         
@@ -734,14 +734,14 @@
                     if (uploadedImage) {
                         doc.addPage();
                         doc.setFillColor(229, 230, 231);
-                        doc.rect(0, 0, 210, 35, 'F');
+                        doc.rect(0, 0, 210, 25, 'F');
                         if (logoDataURL) {
-                            doc.addImage(logoDataURL, 'PNG', 5, 5, 40, 7);
+                            doc.addImage(logoDataURL, 'PNG', 7, 5, 39, 7);
                         }
                         doc.setTextColor(38, 38, 38);
-                        doc.setFontSize(16);
+                        doc.setFontSize(14);
                         doc.setFont('helvetica', 'bold');
-                        doc.text('Foto do Alvo', 120, 20, { align: 'center' });
+                        doc.text('Foto do Alvo', 105, 11, { align: 'center' });
                         
                         // Foto original (sem marcações) - usar diretamente o data URL
                         doc.setFontSize(11);
@@ -757,7 +757,7 @@
                         }
                     }
                     
-                    // Footer and logo on all pages
+                    // Footer with page numbers on all pages
                     const pageCount = doc.internal.getNumberOfPages();
                     for (let i = 1; i <= pageCount; i++) {
                         doc.setPage(i);
@@ -767,6 +767,8 @@
                         doc.setFontSize(9);
                         doc.setFont('helvetica', 'normal');
                         doc.text('ARES - Tecnologia Brasileira em Defesa', 105, 293, { align: 'center' });
+                        doc.setFontSize(7);
+                        doc.text(`${i} / ${pageCount}`, 200, 293, { align: 'right' });
                     }
                     
                     doc.save(`ARES_Calculo_Dispersao_PMI_${Date.now()}.pdf`);
@@ -1804,7 +1806,7 @@
                                             <p className="text-gray-600 mb-3 text-sm font-semibold">
                                                 Simulações em Diferentes Distâncias (Alvo OTAN 2,3m x 2,3m)
                                             </p>
-                                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
                                                 {[100, 500, 1000, 1500].map(d => (
                                                     <DistanceSimulation 
                                                         key={d}
