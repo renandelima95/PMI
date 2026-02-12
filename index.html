@@ -327,9 +327,17 @@
                 });
             };
 
+            const [pdfDebugLog, setPdfDebugLog] = useState(null);
+
             const generatePDF = async () => {
+                const debugLines = [];
+                const dbg = (msg) => { debugLines.push(`[${new Date().toLocaleTimeString()}] ${msg}`); };
                 try {
+                dbg('Iniciando geração do PDF...');
+                dbg(`UA: ${navigator.userAgent}`);
+                dbg(`standalone: ${window.matchMedia('(display-mode: standalone)').matches}`);
                 const { jsPDF } = window.jspdf;
+                dbg('jsPDF carregado');
                 const doc = new jsPDF();
                 const results = calculateResults();
 
@@ -889,29 +897,42 @@
                     doc.text(`${i} / ${pageCount}`, 200, 293, { align: 'right' });
                 }
 
+                dbg('PDF construído com sucesso');
                 const today = new Date();
                 const dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
                 const safeSistema = sistemaText.replace(/[^a-zA-Z0-9_-]/g, '_');
                 const safeDescricao = descricaoText.replace(/[^a-zA-Z0-9_-]/g, '_');
                 const fileName = `ARES-${safeSistema}-${safeDescricao}-${dateStr}.pdf`;
                 const pdfBlob = doc.output('blob');
+                dbg(`Blob gerado: ${pdfBlob.size} bytes`);
                 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                dbg(`isMobile: ${isMobile}, navigator.share: ${!!navigator.share}, navigator.canShare: ${!!navigator.canShare}`);
 
                 if (isMobile) {
                     // Mobile (iOS/Android): share the PDF
                     if (navigator.share && navigator.canShare) {
                         const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
-                        if (navigator.canShare({ files: [file] })) {
+                        const shareable = navigator.canShare({ files: [file] });
+                        dbg(`canShare files: ${shareable}`);
+                        if (shareable) {
                             try {
+                                dbg('Chamando navigator.share...');
                                 await navigator.share({ files: [file], title: fileName });
+                                dbg('Share concluído');
+                                setPdfDebugLog(debugLines.join('\n'));
                                 return;
                             } catch (err) {
-                                if (err.name === 'AbortError') return;
+                                dbg(`Share erro: ${err.name} - ${err.message}`);
+                                if (err.name === 'AbortError') {
+                                    setPdfDebugLog(debugLines.join('\n'));
+                                    return;
+                                }
                             }
                         }
                     }
-                    // Fallback: download if share not supported
+                    // Fallback: download via anchor tag
                     try {
+                        dbg('Fallback: download via <a>');
                         const url = URL.createObjectURL(pdfBlob);
                         const a = document.createElement('a');
                         a.href = url;
@@ -920,17 +941,23 @@
                         a.click();
                         document.body.removeChild(a);
                         setTimeout(() => URL.revokeObjectURL(url), 5000);
+                        dbg('Download disparado');
                     } catch (dlErr) {
+                        dbg(`Download falhou: ${dlErr.message}, tentando doc.save`);
                         doc.save(fileName);
                     }
                 } else {
                     // Desktop (PC): open the PDF directly in a new tab
+                    dbg('Desktop: abrindo em nova aba');
                     const url = URL.createObjectURL(pdfBlob);
                     window.open(url, '_blank');
                     setTimeout(() => URL.revokeObjectURL(url), 60000);
                 }
+                setPdfDebugLog(debugLines.join('\n'));
 
                 } catch (error) {
+                    dbg(`ERRO: ${error.message}\n${error.stack}`);
+                    setPdfDebugLog(debugLines.join('\n'));
                     console.error('Erro ao gerar PDF:', error);
                     alert('Erro ao gerar PDF: ' + error.message);
                 }
@@ -2115,6 +2142,15 @@
                                             <p className="text-center text-gray-600 text-xs sm:text-sm mt-2 sm:mt-3">
                                                 Relatório completo com dados balísticos e visualizações
                                             </p>
+                                            {pdfDebugLog && (
+                                                <div className="mt-3 p-3 bg-gray-900 text-green-400 rounded-lg text-xs font-mono whitespace-pre-wrap max-h-60 overflow-y-auto">
+                                                    <div className="flex justify-between items-center mb-2">
+                                                        <span className="font-bold text-white">PDF Debug Log</span>
+                                                        <button onClick={() => setPdfDebugLog(null)} className="text-red-400 font-bold text-sm">X</button>
+                                                    </div>
+                                                    {pdfDebugLog}
+                                                </div>
+                                            )}
                                             <button
                                                 onClick={clearAll}
                                                 className="w-full mt-3 py-3 sm:py-4 text-white rounded-xl font-bold text-base sm:text-lg transition-all transform hover:-translate-y-1 hover:shadow-2xl flex items-center justify-center gap-2 sm:gap-3"
