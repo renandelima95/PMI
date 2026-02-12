@@ -223,7 +223,7 @@
             });
             
             useEffect(() => {
-                fetch('./assets/config.json')
+                fetch('./assets/config.json', { cache: 'no-store' })
                     .then(res => res.json())
                     .then(data => setConfig(data))
                     .catch(err => {
@@ -449,6 +449,47 @@
                 const scenarioH = drawPairedTable(scenarioData, y);
                 y += scenarioH + 4;
 
+                // --- Parâmetros GJ (half-width table, before Alvo) ---
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(38, 38, 38);
+                doc.text('Parâmetros GJ', 15, y);
+                y += 2;
+
+                const gjHalfW = 90; // half page width
+                const gjLabelW = 28;
+                const gjData = [
+                    ['GJ Interm. Az', gjIntermAzText, 'GJ Interm. Elv', gjIntermElvText],
+                    ['GJ Rajada Az', gjRajadaAzText, 'GJ Rajada Elv', gjRajadaElvText],
+                ];
+                // Draw half-width paired table for GJ
+                gjData.forEach((row, ri) => {
+                    const rowY = y + ri * cellH;
+                    if (ri % 2 === 0) {
+                        doc.setFillColor(245, 245, 245);
+                        doc.rect(tableX, rowY, gjHalfW, cellH, 'F');
+                    }
+                    doc.setFontSize(7);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(80, 80, 80);
+                    doc.text(row[0], tableX + 2, rowY + 4);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(0, 0, 0);
+                    doc.text(row[1], tableX + gjLabelW + 2, rowY + 4);
+                    const col2Start = tableX + gjHalfW / 2;
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(80, 80, 80);
+                    doc.text(row[2], col2Start + 2, rowY + 4);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(0, 0, 0);
+                    doc.text(row[3], col2Start + gjLabelW + 2, rowY + 4);
+                });
+                const gjH = gjData.length * cellH;
+                doc.setDrawColor(200, 200, 200);
+                doc.setLineWidth(0.3);
+                doc.rect(tableX, y, gjHalfW, gjH);
+                y += gjH + 4;
+
                 // --- Parâmetros do Alvo ---
                 doc.setFontSize(11);
                 doc.setFont('helvetica', 'bold');
@@ -461,79 +502,69 @@
                     ['Dimensões', `${targetDims.width.toFixed(1)} x ${targetDims.height.toFixed(1)} cm`, 'Disparos', `${shots.length}`],
                 ];
                 const targetH = drawPairedTable(targetData, y);
-                y += targetH + 6;
+                y += targetH + 4;
 
-                // --- Parâmetros GJ (separate table) ---
-                doc.setFontSize(11);
-                doc.setFont('helvetica', 'bold');
-                doc.setTextColor(38, 38, 38);
-                doc.text('Parâmetros GJ', 15, y);
-                y += 2;
-
-                const gjData = [
-                    ['GJ Interm. Az', gjIntermAzText, 'GJ Interm. Elv', gjIntermElvText],
-                    ['GJ Rajada Az', gjRajadaAzText, 'GJ Rajada Elv', gjRajadaElvText],
-                ];
-                const gjH = drawPairedTable(gjData, y);
-                y += gjH + 6;
-
-                // --- Alvo principal (bigger) + Resultados full-width below ---
+                // --- Alvo principal + Resultados side by side ---
                 if (canvasRef.current && shots.length > 0) {
                     const imgData = canvasRef.current.toDataURL('image/png');
-                    // Check if target image fits on current page, otherwise add new page
-                    const targetImgSize = 95;
-                    if (y + targetImgSize + 50 > 280) {
+                    const targetImgSize = 80;
+                    const resultsColX = tableX + targetImgSize + 5; // results start after target image
+                    const resultsColW = fullTableW - targetImgSize - 5;
+
+                    // Check if target image fits on current page
+                    if (y + targetImgSize + 60 > 280) {
                         doc.addPage();
                         drawHeader('Cálculo de Dispersão e PMI');
                         y = 30;
                     }
-                    const imgX = (210 - targetImgSize) / 2;
-                    doc.addImage(imgData, 'PNG', imgX, y, targetImgSize, targetImgSize);
-                    y += targetImgSize + 5;
 
-                    // --- Resultados (full-width table) ---
+                    // Draw target image on the left
+                    doc.addImage(imgData, 'PNG', tableX, y, targetImgSize, targetImgSize);
+
+                    // --- Resultados on the right side ---
+                    let ry = y;
                     doc.setFontSize(11);
                     doc.setFont('helvetica', 'bold');
                     doc.setTextColor(38, 38, 38);
-                    doc.text('Resultados', 15, y);
-                    y += 3;
+                    doc.text('Resultados', resultsColX, ry);
+                    ry += 4;
 
-                    // PMI section - full width
+                    // PMI section
                     doc.setFillColor(245, 245, 245);
-                    doc.rect(tableX, y, fullTableW, 14, 'F');
+                    doc.rect(resultsColX, ry, resultsColW, 16, 'F');
                     doc.setDrawColor(200, 200, 200);
-                    doc.rect(tableX, y, fullTableW, 14);
+                    doc.rect(resultsColX, ry, resultsColW, 16);
 
                     doc.setFontSize(8);
                     doc.setFont('helvetica', 'bold');
                     doc.setTextColor(38, 38, 38);
-                    doc.text('Ponto Médio de Impacto (PMI)', tableX + 3, y + 5);
+                    doc.text('Ponto Médio de Impacto (PMI)', resultsColX + 3, ry + 5);
                     doc.setFontSize(7);
                     doc.setFont('helvetica', 'normal');
                     doc.setTextColor(0, 0, 0);
-                    doc.text(`X: ${results.meanX.toFixed(2)} cm  |  ${results.meanXMils.toFixed(2)} mils`, tableX + 3, y + 10);
-                    doc.text(`Y: ${results.meanY.toFixed(2)} cm  |  ${results.meanYMils.toFixed(2)} mils`, tableX + fullTableW / 2, y + 10);
-                    y += 16;
+                    doc.text(`X: ${results.meanX.toFixed(2)} cm  |  ${results.meanXMils.toFixed(2)} mils`, resultsColX + 3, ry + 10);
+                    doc.text(`Y: ${results.meanY.toFixed(2)} cm  |  ${results.meanYMils.toFixed(2)} mils`, resultsColX + 3, ry + 14);
+                    ry += 18;
 
-                    // Dispersão section - full width
+                    // Dispersão section
                     doc.setFillColor(245, 245, 245);
-                    doc.rect(tableX, y, fullTableW, 14, 'F');
+                    doc.rect(resultsColX, ry, resultsColW, 20, 'F');
                     doc.setDrawColor(200, 200, 200);
-                    doc.rect(tableX, y, fullTableW, 14);
+                    doc.rect(resultsColX, ry, resultsColW, 20);
 
                     doc.setFontSize(8);
                     doc.setFont('helvetica', 'bold');
                     doc.setTextColor(38, 38, 38);
-                    doc.text('Desvio Padrão (Dispersão)', tableX + 3, y + 5);
+                    doc.text('Desvio Padrão (Dispersão)', resultsColX + 3, ry + 5);
                     doc.setFontSize(7);
                     doc.setFont('helvetica', 'normal');
                     doc.setTextColor(0, 0, 0);
-                    doc.text(`Horizontal: ${results.stdDevXMils.toFixed(2)} mils`, tableX + 3, y + 10);
-                    doc.text(`Vertical: ${results.stdDevYMils.toFixed(2)} mils`, tableX + 65, y + 10);
-                    doc.text(`Radial: ${results.stdDevRadialMils.toFixed(2)} mils`, tableX + 125, y + 10);
-                    y += 16;
+                    doc.text(`Horizontal: ${results.stdDevXMils.toFixed(2)} mils`, resultsColX + 3, ry + 10);
+                    doc.text(`Vertical: ${results.stdDevYMils.toFixed(2)} mils`, resultsColX + 3, ry + 14);
+                    doc.text(`Radial: ${results.stdDevRadialMils.toFixed(2)} mils`, resultsColX + 3, ry + 18);
+                    ry += 22;
 
-                    // Shot status - below the results table, no overlap
+                    // Shot status
                     const shotsInside = shots.filter(shot => {
                         const halfW = targetDims.width / 2;
                         const halfH = targetDims.height / 2;
@@ -545,15 +576,16 @@
                     doc.setFont('helvetica', 'bold');
                     if (shotsOutside > 0) {
                         doc.setTextColor(220, 38, 38);
-                        doc.text(`${shotsOutside} disparo${shotsOutside > 1 ? 's' : ''} fora do alvo`, tableX + 3, y);
+                        doc.text(`${shotsOutside} disparo${shotsOutside > 1 ? 's' : ''} fora do alvo`, resultsColX + 3, ry);
                     } else {
                         doc.setTextColor(34, 139, 34);
-                        doc.text('Todos os disparos dentro do alvo', tableX + 3, y);
+                        doc.text('Todos os disparos dentro do alvo', resultsColX + 3, ry);
                     }
-                    y += 8;
 
-                    // --- Simulações ---
-                    // Check if simulations fit on current page
+                    // Move y past the target image (whichever is taller)
+                    y += targetImgSize + 5;
+
+                    // --- Simulações (on first page) ---
                     if (y + 55 > 280) {
                         doc.addPage();
                         drawHeader('Simulações');
@@ -566,7 +598,7 @@
                     y += 3;
 
                     const distances = [100, 500, 1000, 1500];
-                    const simSize = 42;
+                    const simSize = 40;
                     const simGap = (180 - 4 * simSize) / 3;
                     const simStartX = 15;
 

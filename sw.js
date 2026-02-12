@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ares-pmi-v2';
+const CACHE_NAME = 'ares-pmi-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
@@ -46,6 +46,14 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Always fetch config.json from network (never serve from cache)
+  if (event.request.url.includes('config.json')) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
   event.respondWith(
     // Network first, fall back to cache
     fetch(event.request)
