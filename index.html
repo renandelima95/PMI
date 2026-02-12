@@ -882,6 +882,38 @@
                 }
             };
 
+            const clearAll = () => {
+                if (!window.confirm('Tem certeza que deseja limpar todos os dados?')) return;
+                setShots([]);
+                setCurrentX('');
+                setCurrentY('');
+                setDistance(100);
+                setTargetType('otan_230');
+                setCustomWidth(230);
+                setCustomHeight(230);
+                setUploadedImage(null);
+                setOriginalImageElement(null);
+                setCalibrationMode(false);
+                setCalibrationStep(0);
+                setCalibrationPoints({ center: null, top: null, bottom: null, left: null, right: null });
+                setIsCalibrated(false);
+                setClickMode(false);
+                setDeleteMode(false);
+                setDescricao('');
+                setAtirador('');
+                setSistemaOutro('');
+                setSn('');
+                setArmamentoOutro('');
+                setCenarioMovimento('');
+                setMunicaoOutro('');
+                setQtdDisparos('');
+                setModo('');
+                setGjIntermAz('');
+                setGjIntermElv('');
+                setGjRajadaAz('');
+                setGjRajadaElv('');
+            };
+
             const handleImageUpload = (e) => {
                 const file = e.target.files[0];
                 if (file) {
@@ -2006,6 +2038,13 @@
                                             <p className="text-center text-gray-600 text-xs sm:text-sm mt-2 sm:mt-3">
                                                 Relatório completo com dados balísticos e visualizações
                                             </p>
+                                            <button
+                                                onClick={clearAll}
+                                                className="w-full mt-3 py-3 sm:py-4 text-white rounded-xl font-bold text-base sm:text-lg transition-all transform hover:-translate-y-1 hover:shadow-2xl flex items-center justify-center gap-2 sm:gap-3"
+                                                style={{background: 'linear-gradient(to right, #991b1b, #b91c1c)'}}
+                                            >
+                                                <span>Limpar Tudo</span>
+                                            </button>
                                         </div>
                                     </div>
                                 )}
