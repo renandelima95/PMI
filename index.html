@@ -326,6 +326,7 @@
             };
 
             const generatePDF = async () => {
+                try {
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
                 const results = calculateResults();
@@ -887,30 +888,40 @@
                 }
 
                 const fileName = `ARES_Calculo_Dispersao_PMI_${Date.now()}.pdf`;
-                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+                const pdfBlob = doc.output('blob');
 
-                if (isStandalone && navigator.share && navigator.canShare) {
-                    // Android PWA: use Web Share API to save/share the PDF
-                    const pdfBlob = doc.output('blob');
+                // Try Web Share API first (works best on Android PWA)
+                if (navigator.share && navigator.canShare) {
                     const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
                     if (navigator.canShare({ files: [file] })) {
                         try {
                             await navigator.share({ files: [file], title: fileName });
+                            return;
                         } catch (err) {
-                            if (err.name !== 'AbortError') {
-                                // Share failed for a reason other than user cancel, fallback to open
-                                const url = URL.createObjectURL(pdfBlob);
-                                window.open(url, '_blank');
-                            }
+                            if (err.name === 'AbortError') return;
+                            // Share failed, fall through to download
                         }
-                    } else {
-                        // canShare says no for files, fallback to open in new tab
-                        const pdfBlob2 = doc.output('blob');
-                        const url = URL.createObjectURL(pdfBlob2);
-                        window.open(url, '_blank');
                     }
-                } else {
+                }
+
+                // Fallback: programmatic <a> download (works on Android Chrome)
+                try {
+                    const url = URL.createObjectURL(pdfBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = fileName;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(() => URL.revokeObjectURL(url), 5000);
+                } catch (dlErr) {
+                    // Last resort: doc.save
                     doc.save(fileName);
+                }
+
+                } catch (error) {
+                    console.error('Erro ao gerar PDF:', error);
+                    alert('Erro ao gerar PDF: ' + error.message);
                 }
             };
 
