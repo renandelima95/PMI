@@ -1211,10 +1211,6 @@
                 setShots(shots.filter((_, i) => i !== index));
             };
 
-            const clearAll = () => {
-                setShots([]);
-            };
-
             const handleKeyPress = (e) => {
                 if (e.key === 'Enter') {
                     addShot();
