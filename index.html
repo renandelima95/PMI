@@ -889,34 +889,39 @@
 
                 const fileName = `ARES_Calculo_Dispersao_PMI_${Date.now()}.pdf`;
                 const pdfBlob = doc.output('blob');
+                const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-                // Try Web Share API first (works best on Android PWA)
-                if (navigator.share && navigator.canShare) {
-                    const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
-                    if (navigator.canShare({ files: [file] })) {
-                        try {
-                            await navigator.share({ files: [file], title: fileName });
-                            return;
-                        } catch (err) {
-                            if (err.name === 'AbortError') return;
-                            // Share failed, fall through to download
+                if (isMobile) {
+                    // Mobile (iOS/Android): share the PDF
+                    if (navigator.share && navigator.canShare) {
+                        const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+                        if (navigator.canShare({ files: [file] })) {
+                            try {
+                                await navigator.share({ files: [file], title: fileName });
+                                return;
+                            } catch (err) {
+                                if (err.name === 'AbortError') return;
+                            }
                         }
                     }
-                }
-
-                // Fallback: programmatic <a> download (works on Android Chrome)
-                try {
+                    // Fallback: download if share not supported
+                    try {
+                        const url = URL.createObjectURL(pdfBlob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = fileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        setTimeout(() => URL.revokeObjectURL(url), 5000);
+                    } catch (dlErr) {
+                        doc.save(fileName);
+                    }
+                } else {
+                    // Desktop (PC): open the PDF directly in a new tab
                     const url = URL.createObjectURL(pdfBlob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = fileName;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    setTimeout(() => URL.revokeObjectURL(url), 5000);
-                } catch (dlErr) {
-                    // Last resort: doc.save
-                    doc.save(fileName);
+                    window.open(url, '_blank');
+                    setTimeout(() => URL.revokeObjectURL(url), 60000);
                 }
 
                 } catch (error) {
