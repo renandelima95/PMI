@@ -188,6 +188,8 @@
             const [clickMode, setClickMode] = useState(false);
             const [deleteMode, setDeleteMode] = useState(false);
             const imageCanvasRef = useRef(null);
+            const galleryInputRef = useRef(null);
+            const cameraInputRef = useRef(null);
             
             // Estados para Cenário de Teste
             const [descricao, setDescricao] = useState('');
@@ -1799,14 +1801,41 @@
                                     
                                     <div className="mb-6">
                                         <label className="block mb-2 font-semibold text-gray-800 text-sm">
-                                            Upload da foto do alvo
+                                            Foto do alvo
                                         </label>
                                         <input
                                             type="file"
                                             accept="image/*"
+                                            ref={galleryInputRef}
                                             onChange={handleImageUpload}
-                                            className="w-full p-3 border-2 border-gray-300 rounded-lg"
+                                            style={{display: 'none'}}
                                         />
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            ref={cameraInputRef}
+                                            onChange={handleImageUpload}
+                                            style={{display: 'none'}}
+                                        />
+                                        <div className="flex gap-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => galleryInputRef.current.click()}
+                                                className="flex-1 p-3 border-2 border-gray-300 rounded-lg font-semibold text-sm hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                                                style={{color: '#262626'}}
+                                            >
+                                                Galeria
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => cameraInputRef.current.click()}
+                                                className="flex-1 p-3 border-2 border-gray-300 rounded-lg font-semibold text-sm hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                                                style={{color: '#262626'}}
+                                            >
+                                                Câmera
+                                            </button>
+                                        </div>
                                     </div>
 
                                     {uploadedImage && (
