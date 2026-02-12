@@ -854,7 +854,64 @@
                     doc.text(`${i} / ${pageCount}`, 200, 293, { align: 'right' });
                 }
 
-                doc.save(`ARES_Calculo_Dispersao_PMI_${Date.now()}.pdf`);
+                const fileName = `ARES_Calculo_Dispersao_PMI_${Date.now()}.pdf`;
+                const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+                if (isStandalone && navigator.share && navigator.canShare) {
+                    // Android PWA: use Web Share API to save/share the PDF
+                    const pdfBlob = doc.output('blob');
+                    const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+                    if (navigator.canShare({ files: [file] })) {
+                        try {
+                            await navigator.share({ files: [file], title: fileName });
+                        } catch (err) {
+                            if (err.name !== 'AbortError') {
+                                // Share failed for a reason other than user cancel, fallback to open
+                                const url = URL.createObjectURL(pdfBlob);
+                                window.open(url, '_blank');
+                            }
+                        }
+                    } else {
+                        // canShare says no for files, fallback to open in new tab
+                        const pdfBlob2 = doc.output('blob');
+                        const url = URL.createObjectURL(pdfBlob2);
+                        window.open(url, '_blank');
+                    }
+                } else {
+                    doc.save(fileName);
+                }
+            };
+
+            const clearAll = () => {
+                if (!window.confirm('Tem certeza que deseja limpar todos os dados?')) return;
+                setShots([]);
+                setCurrentX('');
+                setCurrentY('');
+                setDistance(100);
+                setTargetType('otan_230');
+                setCustomWidth(230);
+                setCustomHeight(230);
+                setUploadedImage(null);
+                setOriginalImageElement(null);
+                setCalibrationMode(false);
+                setCalibrationStep(0);
+                setCalibrationPoints({ center: null, top: null, bottom: null, left: null, right: null });
+                setIsCalibrated(false);
+                setClickMode(false);
+                setDeleteMode(false);
+                setDescricao('');
+                setAtirador('');
+                setSistemaOutro('');
+                setSn('');
+                setArmamentoOutro('');
+                setCenarioMovimento('');
+                setMunicaoOutro('');
+                setQtdDisparos('');
+                setModo('');
+                setGjIntermAz('');
+                setGjIntermElv('');
+                setGjRajadaAz('');
+                setGjRajadaElv('');
             };
 
             const handleImageUpload = (e) => {
@@ -1981,6 +2038,13 @@
                                             <p className="text-center text-gray-600 text-xs sm:text-sm mt-2 sm:mt-3">
                                                 Relatório completo com dados balísticos e visualizações
                                             </p>
+                                            <button
+                                                onClick={clearAll}
+                                                className="w-full mt-3 py-3 sm:py-4 text-white rounded-xl font-bold text-base sm:text-lg transition-all transform hover:-translate-y-1 hover:shadow-2xl flex items-center justify-center gap-2 sm:gap-3"
+                                                style={{background: 'linear-gradient(to right, #991b1b, #b91c1c)'}}
+                                            >
+                                                <span>Limpar Tudo</span>
+                                            </button>
                                         </div>
                                     </div>
                                 )}
