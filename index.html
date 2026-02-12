@@ -887,7 +887,11 @@
                     doc.text(`${i} / ${pageCount}`, 200, 293, { align: 'right' });
                 }
 
-                const fileName = `ARES_Calculo_Dispersao_PMI_${Date.now()}.pdf`;
+                const today = new Date();
+                const dateStr = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+                const safeSistema = sistemaText.replace(/[^a-zA-Z0-9_-]/g, '_');
+                const safeDescricao = descricaoText.replace(/[^a-zA-Z0-9_-]/g, '_');
+                const fileName = `ARES-${safeSistema}-${safeDescricao}-${dateStr}.pdf`;
                 const pdfBlob = doc.output('blob');
                 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
